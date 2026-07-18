@@ -33,6 +33,12 @@
                     Engine: Loading...
                 </div>
                 <div class="header-time" id="live-time">00:00:00</div>
+                <!-- User Profile & Logout -->
+                <div class="user-badge" id="user-badge" style="display: none;">
+                    <span class="user-role-avatar">👤</span>
+                    <span class="user-role-name" id="user-role-name">Worker</span>
+                    <button class="btn btn-secondary btn-sm" id="btn-logout" style="margin-left: 8px; padding: 4px 8px; font-size: 11px;">Logout</button>
+                </div>
             </div>
         </header>
 
@@ -321,6 +327,44 @@
             </div>
 
             <button class="btn btn-primary" id="btn-close-modal">New Customer</button>
+        </div>
+    </div>
+
+    <!-- Login Screen Overlay -->
+    <div class="login-overlay active" id="login-overlay">
+        <div class="login-card">
+            <div class="login-header">
+                <span class="login-logo">⚡</span>
+                <h2>SmartScan AI</h2>
+                <p>Supermarket POS & Inventory Portal</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="login-input-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" placeholder="Enter username" required autocomplete="username">
+                </div>
+                <div class="login-input-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="Enter password" required autocomplete="current-password">
+                </div>
+                
+                <div class="login-error-msg" id="login-error-msg" style="display: none;"></div>
+                
+                <button type="submit" class="btn btn-primary login-btn" id="btn-login-submit">Sign In</button>
+            </form>
+            
+            <div class="login-help-section">
+                <h4>Quick Help Credentials:</h4>
+                <div class="login-help-row">
+                    <span class="help-role">Admin Access:</span>
+                    <span class="help-creds">admin / admin123</span>
+                </div>
+                <div class="login-help-row">
+                    <span class="help-role">Worker Billing:</span>
+                    <span class="help-creds">worker / worker123</span>
+                </div>
+            </div>
         </div>
     </div>
 

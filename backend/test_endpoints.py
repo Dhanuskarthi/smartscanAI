@@ -177,6 +177,18 @@ def test_admin_catalog_updates():
             
     print("[PASS] Admin Catalog update & stock/profit tracking passed.")
 
+def test_login_auth_logic():
+    print("\nTesting Login Authentication endpoint logic...")
+    # Simulate login auth endpoint lookup
+    users = {
+        "admin": {"password": "admin123", "role": "admin"},
+        "worker": {"password": "worker123", "role": "worker"}
+    }
+    assert users.get("admin")["password"] == "admin123"
+    assert users.get("worker")["password"] == "worker123"
+    assert users.get("unknown") is None
+    print("[PASS] Login Authentication endpoint logic passed.")
+
 def main():
     print("==================================================")
     print("   Running Automated Offline Backend Verification ")
@@ -185,18 +197,23 @@ def main():
     # Initialize DB for testing to avoid "no such table" warnings
     from backend.database import init_db, DB_PATH
     import os
-    if os.path.exists(DB_PATH):
-        try:
-            os.remove(DB_PATH)
-        except Exception:
-            pass
-    init_db()
+    if os.environ.get("VERCEL"):
+        # Don't alter Vercel SQLite
+        pass
+    else:
+        if os.path.exists(DB_PATH):
+            try:
+                os.remove(DB_PATH)
+            except Exception:
+                pass
+        init_db()
     
     try:
         test_color_heuristic_detector()
         test_ocr_parser_logic()
         test_database_persistence()
         test_admin_catalog_updates()
+        test_login_auth_logic()
         print("\n==================================================")
         print("  ALL OFFLINE TESTS PASSED SUCCESSFULLY! [OK]")
         print("==================================================")

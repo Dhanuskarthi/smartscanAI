@@ -60,6 +60,26 @@ class UpdateProductRequest(BaseModel):
     cost_price: float
     stock: float
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/auth/login")
+def login_auth(request: LoginRequest):
+    """
+    Validates username and password and returns the associated role.
+    """
+    users = {
+        "admin": {"password": "admin123", "role": "admin"},
+        "worker": {"password": "worker123", "role": "worker"}
+    }
+    
+    user = users.get(request.username.lower())
+    if not user or user["password"] != request.password:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+        
+    return {"success": True, "role": user["role"], "username": request.username}
+
 @app.get("/api/items")
 def get_items():
     """Retrieve the grocery items database catalog."""

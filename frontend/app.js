@@ -1080,6 +1080,120 @@ document.getElementById('btn-refresh-admin').onclick = () => {
     fetchAdminCatalog();
 };
 
+// Authentication & Role-Based Access Control
+function checkAuth() {
+    const role = localStorage.getItem('user_role');
+    const name = localStorage.getItem('user_name');
+    
+    const overlay = document.getElementById('login-overlay');
+    const userBadge = document.getElementById('user-badge');
+    const roleNameEl = document.getElementById('user-role-name');
+    
+    // Find the Admin Panel tab button
+    const adminTabBtn = document.querySelector('.tab-btn[data-tab="admin"]');
+    
+    if (role && name) {
+        overlay.classList.remove('active');
+        userBadge.style.display = 'flex';
+        roleNameEl.textContent = `${name} (${role})`;
+        
+        if (role === 'admin') {
+            if (adminTabBtn) adminTabBtn.style.display = '';
+        } else {
+            if (adminTabBtn) adminTabBtn.style.display = 'none';
+        }
+    } else {
+        overlay.classList.add('active');
+        userBadge.style.display = 'none';
+        if (adminTabBtn) adminTabBtn.style.display = 'none';
+        
+        // If current tab is admin, switch to cart
+        if (activeTab === 'admin') {
+            switchTab('cart');
+        }
+    }
+}
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.tab === tabId) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    document.querySelectorAll('.tab-content').forEach(content => {
+        if (content.id === `tab-${tabId}`) {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
+    
+    activeTab = tabId;
+}
+
+async function handleLogin(event) {
+    event.preventDefault();
+    const usernameEl = document.getElementById('login-username');
+    const passwordEl = document.getElementById('login-password');
+    const errorEl = document.getElementById('login-error-msg');
+    const submitBtn = document.getElementById('btn-login-submit');
+    
+    errorEl.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Verifying...';
+    
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: usernameEl.value, password: passwordEl.value })
+        });
+        
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.detail || 'Login failed');
+        }
+        
+        const data = await response.json();
+        playBeep(880, 0.05);
+        setTimeout(() => playBeep(1200, 0.08), 60);
+        
+        localStorage.setItem('user_role', data.role);
+        localStorage.setItem('user_name', data.username);
+        
+        usernameEl.value = '';
+        passwordEl.value = '';
+        checkAuth();
+        
+        // Refresh catalog if admin
+        if (data.role === 'admin') {
+            fetchAdminCatalog();
+        }
+    } catch (error) {
+        console.error("Login failure:", error);
+        errorEl.textContent = error.message;
+        errorEl.style.display = 'block';
+        playBeep(220, 0.25);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In';
+    }
+}
+
+function handleLogout() {
+    playBeep(440, 0.1);
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('user_name');
+    checkAuth();
+}
+
+// Attach event listeners for login & logout
+document.getElementById('login-form').onsubmit = handleLogin;
+document.getElementById('btn-logout').onclick = handleLogout;
+
 // Initialize
 window.onload = async () => {
     await fetchItems();
@@ -1087,4 +1201,5 @@ window.onload = async () => {
     initSimulation();
     initOCRMode();
     fetchTransactions(); // Initial quiet load of history
+    checkAuth();         // Verify login state
 };
