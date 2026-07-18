@@ -6,6 +6,10 @@ import cv2
 # Ensure the parent directory is in the python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# Force test runner to use local SQLite database so it doesn't pollute live Supabase tables
+os.environ["SUPABASE_URL"] = ""
+os.environ["SUPABASE_KEY"] = ""
+
 from backend.detector import GroceryDetector
 from backend.parser import parse_receipt_text, parse_receipt_image
 
