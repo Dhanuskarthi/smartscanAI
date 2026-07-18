@@ -121,7 +121,7 @@ def test_database_persistence():
 
 def test_admin_catalog_updates():
     print("\nTesting Admin Catalog updates...")
-    from backend.database import init_db, get_item_by_id, update_product_price, DB_PATH
+    from backend.database import init_db, get_item_by_id, update_product_details, DB_PATH, save_transaction, get_financial_summary
     
     # Clean test database path if exists to start fresh
     if os.path.exists(DB_PATH):
@@ -133,18 +133,40 @@ def test_admin_catalog_updates():
     # Initialize
     init_db()
     
-    # Get default price of apple (should be 180.00)
+    # 1. Get default price, cost, and stock of apple (should be 180.00, 130.00, 100.0)
     item = get_item_by_id("apple")
     assert item is not None, "Product apple not found"
     assert item["price"] == 180.00, f"Expected default price 180.0, got {item['price']}"
+    assert item["cost_price"] == 130.00, f"Expected cost price 130.0, got {item['cost_price']}"
+    assert item["stock"] == 100.0, f"Expected stock 100.0, got {item['stock']}"
     
-    # Update price of apple to 200.00
-    success = update_product_price("apple", 200.00)
-    assert success, "Failed to update product price"
+    # 2. Update price, cost, and stock of apple
+    success = update_product_details("apple", 200.00, 140.00, 95.0)
+    assert success, "Failed to update product details"
     
-    # Get apple details again and check price
+    # 3. Get apple details again and check
     item_updated = get_item_by_id("apple")
     assert item_updated["price"] == 200.00, f"Expected updated price 200.0, got {item_updated['price']}"
+    assert item_updated["cost_price"] == 140.00, f"Expected cost 140.0, got {item_updated['cost_price']}"
+    assert item_updated["stock"] == 95.0, f"Expected stock 95.0, got {item_updated['stock']}"
+
+    # 4. Perform a transaction of 5 units of apples
+    tx_items = [
+        {"id": "apple", "name": "Honeycrisp Apple", "price": 200.00, "qty": 5, "unit": "kg"}
+    ]
+    tx_id = "TXID-STOCKTEST"
+    save_success = save_transaction(tx_id, 1000.00, 80.00, 1080.00, tx_items)
+    assert save_success, "Failed to save stock test transaction"
+
+    # 5. Verify stock was deducted: 95.0 - 5 = 90.0
+    item_after_tx = get_item_by_id("apple")
+    assert item_after_tx["stock"] == 90.0, f"Expected stock 90.0 after sale, got {item_after_tx['stock']}"
+
+    # 6. Verify financials: Revenue = 1000.00, Cost = 5 * 140.00 = 700.00, Profit = 300.00
+    summary = get_financial_summary()
+    assert summary["revenue"] == 1000.00, f"Expected revenue 1000.00, got {summary['revenue']}"
+    assert summary["cost"] == 700.00, f"Expected cost 700.00, got {summary['cost']}"
+    assert summary["profit"] == 300.00, f"Expected profit 300.00, got {summary['profit']}"
     
     # Cleanup
     if os.path.exists(DB_PATH):
@@ -153,7 +175,7 @@ def test_admin_catalog_updates():
         except Exception:
             pass
             
-    print("[PASS] Admin Catalog update test passed.")
+    print("[PASS] Admin Catalog update & stock/profit tracking passed.")
 
 def main():
     print("==================================================")

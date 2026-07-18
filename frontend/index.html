@@ -267,9 +267,34 @@
                             <button class="btn btn-secondary btn-sm" id="btn-refresh-admin">Refresh Catalog</button>
                         </div>
                         <div class="admin-list-wrapper">
+                            <!-- Supermarket P&L / Stock Dashboard -->
+                            <div class="admin-dashboard" id="admin-dashboard">
+                                <div class="dashboard-card profit-card">
+                                    <div class="db-card-icon">📈</div>
+                                    <div class="db-card-info">
+                                        <span class="db-card-label">Total Revenue</span>
+                                        <h3 id="db-revenue">₹0.00</h3>
+                                    </div>
+                                </div>
+                                <div class="dashboard-card profit-card">
+                                    <div class="db-card-icon">💰</div>
+                                    <div class="db-card-info">
+                                        <span class="db-card-label">Net Profit</span>
+                                        <h3 id="db-profit">₹0.00</h3>
+                                    </div>
+                                </div>
+                                <div class="dashboard-card alert-card">
+                                    <div class="db-card-icon">⚠️</div>
+                                    <div class="db-card-info">
+                                        <span class="db-card-label">Low Stock Alerts</span>
+                                        <h3 id="db-low-stock">0</h3>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="admin-tip-bar">
                                 <span class="tip-icon">⚙️</span>
-                                <span class="tip-text">Set prices in Indian Rupees (₹). Price updates apply immediately to checkout and scan logic.</span>
+                                <span class="tip-text">Manage stock inventory, cost prices, and selling prices. Price/Stock changes apply immediately.</span>
                             </div>
                             <div class="admin-items-list" id="admin-items-list">
                                 <!-- Dynamic admin list items inject here -->

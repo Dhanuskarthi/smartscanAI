@@ -913,6 +913,9 @@ async function fetchAdminCatalog() {
     const listEl = document.getElementById('admin-items-list');
     listEl.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="spinner" style="margin: 0 auto 10px auto;"></div>Loading catalog...</div>';
     
+    // Quietly load financial summary
+    fetchFinancialSummary();
+    
     try {
         const response = await fetch('/api/items');
         const items = await response.json();
@@ -922,6 +925,33 @@ async function fetchAdminCatalog() {
     } catch (error) {
         console.error("Failed to fetch admin catalog:", error);
         listEl.innerHTML = '<div style="color: var(--accent); text-align: center; padding: 20px;">Could not load product catalog.</div>';
+    }
+}
+
+async function fetchFinancialSummary() {
+    try {
+        const response = await fetch('/api/admin/finances');
+        const summary = await response.json();
+        
+        document.getElementById('db-revenue').textContent = formatCurrency(summary.revenue);
+        
+        const profitEl = document.getElementById('db-profit');
+        profitEl.textContent = formatCurrency(summary.profit);
+        if (summary.profit >= 0) {
+            profitEl.style.color = "var(--primary)";
+        } else {
+            profitEl.style.color = "var(--accent)";
+        }
+        
+        const stockAlertEl = document.getElementById('db-low-stock');
+        stockAlertEl.textContent = summary.low_stock_count;
+        if (summary.low_stock_count > 0) {
+            stockAlertEl.style.color = "#FF9500";
+        } else {
+            stockAlertEl.style.color = "";
+        }
+    } catch (error) {
+        console.error("Error fetching financial summary:", error);
     }
 }
 
@@ -935,6 +965,10 @@ function renderAdminCatalog(items) {
     }
     
     items.forEach(item => {
+        const isLow = item.stock < 15.0;
+        const stockText = isLow ? `Low Stock (${item.stock} ${item.unit})` : `In Stock (${item.stock} ${item.unit})`;
+        const stockClass = isLow ? 'low-stock' : 'in-stock';
+        
         const row = document.createElement('div');
         row.className = 'admin-product-row';
         row.innerHTML = `
@@ -943,45 +977,69 @@ function renderAdminCatalog(items) {
                 <div class="admin-product-details">
                     <h4>${item.name}</h4>
                     <span>SKU: ${item.sku} | Unit: ${item.unit} | Category: ${item.category}</span>
+                    <div class="admin-product-meta">
+                        <span class="stock-tag ${stockClass}">${stockText}</span>
+                    </div>
                 </div>
             </div>
             <div class="admin-price-update-form" data-id="${item.id}">
-                <div class="admin-price-input-wrapper">
-                    <span class="admin-currency-prefix">₹</span>
-                    <input type="number" class="admin-price-input" step="0.01" min="0" value="${item.price.toFixed(2)}">
+                <div class="admin-input-group">
+                    <span class="admin-input-label">Cost</span>
+                    <div class="admin-price-input-wrapper">
+                        <span class="admin-currency-prefix">₹</span>
+                        <input type="number" class="admin-price-input admin-cost-input-field" step="0.01" min="0" value="${(item.cost_price || 0).toFixed(2)}">
+                    </div>
                 </div>
-                <button class="btn btn-primary admin-save-btn" onclick="saveProductPrice('${item.id}', this)">Save</button>
+                <div class="admin-input-group">
+                    <span class="admin-input-label">Price</span>
+                    <div class="admin-price-input-wrapper">
+                        <span class="admin-currency-prefix">₹</span>
+                        <input type="number" class="admin-price-input admin-selling-input-field" step="0.01" min="0" value="${item.price.toFixed(2)}">
+                    </div>
+                </div>
+                <div class="admin-input-group">
+                    <span class="admin-input-label">Stock (${item.unit})</span>
+                    <input type="number" class="admin-stock-input admin-stock-input-field" step="0.1" min="0" value="${item.stock}">
+                </div>
+                <button class="btn btn-primary admin-save-btn" onclick="saveProductDetails('${item.id}', this)">Save</button>
             </div>
         `;
         listEl.appendChild(row);
     });
 }
 
-async function saveProductPrice(id, buttonEl) {
+async function saveProductDetails(id, buttonEl) {
     const rowEl = buttonEl.closest('.admin-price-update-form');
-    const inputEl = rowEl.querySelector('.admin-price-input');
-    const newPrice = parseFloat(inputEl.value);
+    const costInput = rowEl.querySelector('.admin-cost-input-field');
+    const sellingInput = rowEl.querySelector('.admin-selling-input-field');
+    const stockInput = rowEl.querySelector('.admin-stock-input-field');
     
-    if (isNaN(newPrice) || newPrice < 0) {
-        alert("Please enter a valid price (>= 0).");
+    const cost = parseFloat(costInput.value);
+    const price = parseFloat(sellingInput.value);
+    const stock = parseFloat(stockInput.value);
+    
+    if (isNaN(cost) || cost < 0 || isNaN(price) || price < 0 || isNaN(stock) || stock < 0) {
+        alert("Please enter valid positive values for cost, price, and stock levels.");
         return;
     }
     
     // Disable inputs during save
-    inputEl.disabled = true;
+    costInput.disabled = true;
+    sellingInput.disabled = true;
+    stockInput.disabled = true;
     buttonEl.disabled = true;
     const originalText = buttonEl.textContent;
     buttonEl.textContent = "Saving...";
     
     try {
-        const response = await fetch('/api/admin/update-price', {
+        const response = await fetch('/api/admin/update-product', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id, price: newPrice })
+            body: JSON.stringify({ id: id, price: price, cost_price: cost, stock: stock })
         });
         
         if (!response.ok) {
-            throw new Error("Update price API failed");
+            throw new Error("Update product API failed");
         }
         
         playBeep(880, 0.05);
@@ -994,7 +1052,9 @@ async function saveProductPrice(id, buttonEl) {
             buttonEl.style.backgroundColor = "";
             buttonEl.style.color = "";
             buttonEl.textContent = originalText;
-            inputEl.disabled = false;
+            costInput.disabled = false;
+            sellingInput.disabled = false;
+            stockInput.disabled = false;
             buttonEl.disabled = false;
             // Fetch database items again so scan and cart logic uses the new prices immediately!
             await fetchItems();
@@ -1002,16 +1062,18 @@ async function saveProductPrice(id, buttonEl) {
         }, 1200);
         
     } catch (error) {
-        console.error("Error updating price:", error);
-        alert("Failed to update product price in the database.");
-        inputEl.disabled = false;
+        console.error("Error updating product details:", error);
+        alert("Failed to update product details in the database.");
+        costInput.disabled = false;
+        sellingInput.disabled = false;
+        stockInput.disabled = false;
         buttonEl.disabled = false;
         buttonEl.textContent = originalText;
     }
 }
 
 // Make globally accessible
-window.saveProductPrice = saveProductPrice;
+window.saveProductDetails = saveProductDetails;
 
 document.getElementById('btn-refresh-admin').onclick = () => {
     playBeep(440, 0.05);

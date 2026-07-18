@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_price
+from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_details, get_financial_summary
 from backend.detector import GroceryDetector
 from backend.parser import parse_receipt_image
 
@@ -54,27 +54,45 @@ class CheckoutRequest(BaseModel):
     total: float
     items: list[CheckoutItem]
 
-class UpdatePriceRequest(BaseModel):
+class UpdateProductRequest(BaseModel):
     id: str
     price: float
+    cost_price: float
+    stock: float
 
 @app.get("/api/items")
 def get_items():
     """Retrieve the grocery items database catalog."""
     return get_all_items()
 
-@app.post("/api/admin/update-price")
-def update_price(request: UpdatePriceRequest):
+@app.post("/api/admin/update-product")
+def update_product(request: UpdateProductRequest):
     """
-    Updates the price of a specific product in the SQLite catalog.
+    Updates the price, cost price, and stock levels of a product in the SQLite catalog.
     """
     try:
-        success = update_product_price(request.id, request.price)
+        success = update_product_details(
+            product_id=request.id,
+            price=request.price,
+            cost_price=request.cost_price,
+            stock=request.stock
+        )
         if not success:
             raise HTTPException(status_code=404, detail="Product not found or update failed")
-        return {"success": True, "id": request.id, "new_price": request.price}
+        return {"success": True, "id": request.id}
     except Exception as e:
-        logger.error(f"Error updating product price: {e}")
+        logger.error(f"Error updating product details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/finances")
+def get_finances():
+    """
+    Calculates and returns total revenue, cost, profit, and low stock count.
+    """
+    try:
+        return get_financial_summary()
+    except Exception as e:
+        logger.error(f"Error retrieving financial summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/checkout")

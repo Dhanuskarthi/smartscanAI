@@ -1197,7 +1197,7 @@ body {
 
 /* Admin Panel Styles */
 .admin-card {
-    height: 520px;
+    height: 640px;
     display: flex;
     flex-direction: column;
 }
@@ -1209,6 +1209,70 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+/* Dashboard summary metrics cards */
+.admin-dashboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.dashboard-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s;
+}
+
+.dashboard-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.db-card-icon {
+    font-size: 24px;
+    width: 42px;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.profit-card .db-card-icon {
+    color: var(--primary);
+    background: rgba(52, 199, 89, 0.1);
+    border-color: rgba(52, 199, 89, 0.2);
+}
+
+.alert-card .db-card-icon {
+    color: var(--accent);
+    background: rgba(255, 59, 48, 0.1);
+    border-color: rgba(255, 59, 48, 0.2);
+}
+
+.db-card-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.db-card-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.db-card-info h3 {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    margin-top: 2px;
 }
 
 .admin-tip-bar {
@@ -1273,10 +1337,48 @@ body {
     color: var(--text-muted);
 }
 
+.admin-product-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.stock-tag {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+.stock-tag.in-stock {
+    background: rgba(52, 199, 89, 0.1);
+    color: var(--primary);
+}
+
+.stock-tag.low-stock {
+    background: rgba(255, 149, 0, 0.15);
+    color: #FF9500;
+    border: 1px solid rgba(255, 149, 0, 0.2);
+}
+
 .admin-price-update-form {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.admin-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.admin-input-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
 .admin-price-input-wrapper {
@@ -1298,14 +1400,27 @@ body {
     border: 1px solid var(--border-color);
     color: var(--text-main);
     padding: 6px 8px 6px 20px;
-    width: 90px;
+    width: 80px;
     font-size: 13px;
     border-radius: var(--radius-sm);
     font-family: var(--font-mono);
     text-align: right;
 }
 
-.admin-price-input:focus {
+.admin-stock-input {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 6px 8px;
+    width: 65px;
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    text-align: right;
+}
+
+.admin-price-input:focus,
+.admin-stock-input:focus {
     border-color: var(--secondary);
     outline: none;
     box-shadow: 0 0 6px rgba(41, 182, 246, 0.25);
@@ -1315,4 +1430,5 @@ body {
     padding: 6px 12px;
     font-size: 12px;
     border-radius: var(--radius-sm);
+    margin-top: 14px; /* Align with label heights */
 }

@@ -7,6 +7,8 @@ GROCERY_ITEMS = {
         "id": "apple",
         "name": "Honeycrisp Apple",
         "price": 180.00,
+        "cost_price": 130.00,
+        "stock": 100.0,
         "unit": "kg",
         "category": "Produce",
         "sku": "4011-APP",
@@ -18,6 +20,8 @@ GROCERY_ITEMS = {
         "id": "banana",
         "name": "Organic Banana",
         "price": 60.00,
+        "cost_price": 40.00,
+        "stock": 150.0,
         "unit": "kg",
         "category": "Produce",
         "sku": "4011-BAN",
@@ -29,6 +33,8 @@ GROCERY_ITEMS = {
         "id": "orange",
         "name": "Navel Orange",
         "price": 120.00,
+        "cost_price": 85.00,
+        "stock": 120.0,
         "unit": "kg",
         "category": "Produce",
         "sku": "3107-ORN",
@@ -40,6 +46,8 @@ GROCERY_ITEMS = {
         "id": "broccoli",
         "name": "Crown Broccoli",
         "price": 150.00,
+        "cost_price": 100.00,
+        "stock": 80.0,
         "unit": "kg",
         "category": "Produce",
         "sku": "4060-BRC",
@@ -51,6 +59,8 @@ GROCERY_ITEMS = {
         "id": "carrot",
         "name": "Organic Carrots",
         "price": 50.00,
+        "cost_price": 35.00,
+        "stock": 200.0,
         "unit": "kg",
         "category": "Produce",
         "sku": "4094-CRT",
@@ -62,6 +72,8 @@ GROCERY_ITEMS = {
         "id": "bottle",
         "name": "Spring Water Bottle",
         "price": 20.00,
+        "cost_price": 12.00,
+        "stock": 250.0,
         "unit": "item",
         "category": "Beverage",
         "sku": "012000000133",
@@ -73,6 +85,8 @@ GROCERY_ITEMS = {
         "id": "cup",
         "name": "Artisan Coffee Cup",
         "price": 90.00,
+        "cost_price": 30.00,
+        "stock": 300.0,
         "unit": "item",
         "category": "Beverage",
         "sku": "073366115933",
@@ -84,6 +98,8 @@ GROCERY_ITEMS = {
         "id": "bowl",
         "name": "Fresh Salad Bowl",
         "price": 180.00,
+        "cost_price": 110.00,
+        "stock": 50.0,
         "unit": "item",
         "category": "Deli",
         "sku": "099482419447",
@@ -96,6 +112,8 @@ GROCERY_ITEMS = {
         "id": "milk",
         "name": "Whole Milk 1L",
         "price": 60.00,
+        "cost_price": 48.00,
+        "stock": 100.0,
         "unit": "item",
         "category": "Dairy",
         "sku": "078742351866",
@@ -106,6 +124,8 @@ GROCERY_ITEMS = {
         "id": "bread",
         "name": "Sliced White Bread",
         "price": 45.00,
+        "cost_price": 32.00,
+        "stock": 90.0,
         "unit": "item",
         "category": "Bakery",
         "sku": "072250037127",
@@ -116,6 +136,8 @@ GROCERY_ITEMS = {
         "id": "cereal",
         "name": "Honey Nut O's Cereal",
         "price": 160.00,
+        "cost_price": 115.00,
+        "stock": 60.0,
         "unit": "item",
         "category": "Pantry",
         "sku": "016000123991",
@@ -126,6 +148,8 @@ GROCERY_ITEMS = {
         "id": "cookies",
         "name": "Chocolate Chip Cookies",
         "price": 40.00,
+        "cost_price": 25.00,
+        "stock": 120.0,
         "unit": "item",
         "category": "Bakery",
         "sku": "044000032029",
@@ -153,6 +177,8 @@ def init_db():
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             price REAL NOT NULL,
+            cost_price REAL NOT NULL DEFAULT 0.0,
+            stock REAL NOT NULL DEFAULT 100.0,
             unit TEXT NOT NULL,
             category TEXT NOT NULL,
             sku TEXT NOT NULL,
@@ -182,11 +208,25 @@ def init_db():
             item_id TEXT NOT NULL,
             name TEXT NOT NULL,
             price REAL NOT NULL,
+            cost_price REAL NOT NULL DEFAULT 0.0,
             qty INTEGER NOT NULL,
             unit TEXT NOT NULL,
             FOREIGN KEY (transaction_id) REFERENCES transactions (id) ON DELETE CASCADE
         )
     """)
+    
+    # Run migrations for existing databases to add cost_price & stock if missing
+    cursor.execute("PRAGMA table_info(products)")
+    prod_columns = [col[1] for col in cursor.fetchall()]
+    if "cost_price" not in prod_columns:
+        cursor.execute("ALTER TABLE products ADD COLUMN cost_price REAL NOT NULL DEFAULT 0.0")
+    if "stock" not in prod_columns:
+        cursor.execute("ALTER TABLE products ADD COLUMN stock REAL NOT NULL DEFAULT 100.0")
+        
+    cursor.execute("PRAGMA table_info(transaction_items)")
+    item_columns = [col[1] for col in cursor.fetchall()]
+    if "cost_price" not in item_columns:
+        cursor.execute("ALTER TABLE transaction_items ADD COLUMN cost_price REAL NOT NULL DEFAULT 0.0")
     
     # 4. Check if products table is empty; if so, populate it with default values
     cursor.execute("SELECT COUNT(*) FROM products")
@@ -194,12 +234,14 @@ def init_db():
     if count == 0:
         for item in GROCERY_ITEMS.values():
             cursor.execute(
-                """INSERT INTO products (id, name, price, unit, category, sku, color, icon, coco_class) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT INTO products (id, name, price, cost_price, stock, unit, category, sku, color, icon, coco_class) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     item["id"],
                     item["name"],
                     item["price"],
+                    item["cost_price"],
+                    item["stock"],
                     item["unit"],
                     item["category"],
                     item["sku"],
@@ -278,18 +320,18 @@ def get_all_items():
     finally:
         conn.close()
 
-def update_product_price(product_id, new_price):
+def update_product_details(product_id, price, cost_price, stock):
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE products SET price = ? WHERE id = ?",
-            (new_price, product_id)
+            "UPDATE products SET price = ?, cost_price = ?, stock = ? WHERE id = ?",
+            (price, cost_price, stock, product_id)
         )
         conn.commit()
         return cursor.rowcount > 0
     except Exception as e:
-        print(f"Database error updating product price: {e}")
+        print(f"Database error updating product details: {e}")
         return False
     finally:
         conn.close()
@@ -305,9 +347,21 @@ def save_transaction(tx_id, subtotal, tax, total, items):
         transaction_id = cursor.lastrowid
         
         for item in items:
+            # Query the database to get the active cost price
+            cursor.execute("SELECT cost_price FROM products WHERE id = ?", (item["id"],))
+            db_row = cursor.fetchone()
+            cost_price = db_row[0] if db_row else 0.0
+            
+            # Write transaction item record
             cursor.execute(
-                "INSERT INTO transaction_items (transaction_id, item_id, name, price, qty, unit) VALUES (?, ?, ?, ?, ?, ?)",
-                (transaction_id, item["id"], item["name"], item["price"], item["qty"], item["unit"])
+                "INSERT INTO transaction_items (transaction_id, item_id, name, price, cost_price, qty, unit) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (transaction_id, item["id"], item["name"], item["price"], cost_price, item["qty"], item["unit"])
+            )
+            
+            # Deduct stock inventory level
+            cursor.execute(
+                "UPDATE products SET stock = MAX(0.0, stock - ?) WHERE id = ?",
+                (item["qty"], item["id"])
             )
         
         conn.commit()
@@ -321,7 +375,6 @@ def save_transaction(tx_id, subtotal, tax, total, items):
 def get_all_transactions():
     try:
         conn = sqlite3.connect(DB_PATH)
-        # return dicts
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -343,5 +396,45 @@ def get_all_transactions():
     except Exception as e:
         print(f"Database error getting transactions: {e}")
         return []
+    finally:
+        conn.close()
+
+def get_financial_summary():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # 1. Total Revenue (Sum of transaction subtotals)
+        cursor.execute("SELECT SUM(subtotal) FROM transactions")
+        revenue_row = cursor.fetchone()
+        revenue = revenue_row[0] if (revenue_row and revenue_row[0]) else 0.0
+        
+        # 2. Total Cost of Goods Sold (COGS)
+        cursor.execute("SELECT SUM(qty * cost_price) FROM transaction_items")
+        cost_row = cursor.fetchone()
+        total_cost = cost_row[0] if (cost_row and cost_row[0]) else 0.0
+        
+        # 3. Net Profit
+        profit = revenue - total_cost
+        
+        # 4. Count of low stock items (< 15 units/kgs)
+        cursor.execute("SELECT COUNT(*) FROM products WHERE stock < 15.0")
+        low_stock_row = cursor.fetchone()
+        low_stock_count = low_stock_row[0] if low_stock_row else 0
+        
+        return {
+            "revenue": round(revenue, 2),
+            "cost": round(total_cost, 2),
+            "profit": round(profit, 2),
+            "low_stock_count": low_stock_count
+        }
+    except Exception as e:
+        print(f"Database error computing financial summary: {e}")
+        return {
+            "revenue": 0.0,
+            "cost": 0.0,
+            "profit": 0.0,
+            "low_stock_count": 0
+        }
     finally:
         conn.close()
