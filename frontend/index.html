@@ -115,6 +115,7 @@
                 <div class="tabs-container">
                     <button class="tab-btn active" data-tab="cart">Live Cart</button>
                     <button class="tab-btn" data-tab="ocr">Backup OCR Parser</button>
+                    <button class="tab-btn" data-tab="history">Transaction History</button>
                 </div>
 
                 <!-- Tab content: Live Cart -->
@@ -233,6 +234,26 @@
 
                                     <button class="btn btn-primary w-100" id="btn-import-ocr">Import Items to Cart</button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab content: Transaction History -->
+                <div class="tab-content" id="tab-history">
+                    <div class="glass-card history-card">
+                        <div class="card-header">
+                            <h2>Transaction History</h2>
+                            <button class="btn btn-secondary btn-sm" id="btn-refresh-history">Refresh</button>
+                        </div>
+                        <div class="history-list-wrapper">
+                            <div class="empty-history-view" id="empty-history-msg">
+                                <span class="empty-history-icon">📊</span>
+                                <h3>No Transactions Found</h3>
+                                <p>Complete a checkout to save transaction details in SQLite.</p>
+                            </div>
+                            <div class="history-list" id="history-list" style="display: none;">
+                                <!-- Dynamic transactions inject here -->
                             </div>
                         </div>
                     </div>

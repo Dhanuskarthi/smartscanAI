@@ -70,6 +70,55 @@ def test_ocr_parser_logic():
     assert parsed["total"] == 9.15, f"Expected total 9.15, got {parsed['total']}"
     print("[PASS] Regex invoice parser passed.")
 
+def test_database_persistence():
+    print("\nTesting SQLite database persistence...")
+    from backend.database import init_db, save_transaction, get_all_transactions, DB_PATH
+    
+    # Clean test database path if exists to start fresh
+    if os.path.exists(DB_PATH):
+        try:
+            os.remove(DB_PATH)
+        except Exception:
+            pass
+            
+    # Initialize
+    init_db()
+    
+    # Save a test transaction
+    tx_items = [
+        {"id": "apple", "name": "Honeycrisp Apple", "price": 1.99, "qty": 2, "unit": "lb"},
+        {"id": "milk", "name": "Whole Milk 1Gal", "price": 3.49, "qty": 1, "unit": "item"}
+    ]
+    tx_id = "TXID-TEST12345"
+    subtotal = 7.47
+    tax = 0.60
+    total = 8.07
+    
+    success = save_transaction(tx_id, subtotal, tax, total, tx_items)
+    assert success, "Failed to save transaction to SQLite database"
+    
+    # Get and check transactions
+    transactions = get_all_transactions()
+    assert len(transactions) == 1, f"Expected 1 transaction in DB, got {len(transactions)}"
+    
+    saved_tx = transactions[0]
+    assert saved_tx["tx_id"] == tx_id, f"Expected tx_id {tx_id}, got {saved_tx['tx_id']}"
+    assert saved_tx["total"] == total, f"Expected total {total}, got {saved_tx['total']}"
+    assert len(saved_tx["items"]) == 2, f"Expected 2 items in saved transaction, got {len(saved_tx['items'])}"
+    
+    # Verify items
+    item_apple = next(item for item in saved_tx["items"] if item["item_id"] == "apple")
+    assert item_apple["qty"] == 2, f"Expected apple qty 2, got {item_apple['qty']}"
+    
+    # Cleanup DB after test
+    if os.path.exists(DB_PATH):
+        try:
+            os.remove(DB_PATH)
+        except Exception:
+            pass
+            
+    print("[PASS] SQLite transaction persistence passed.")
+
 def main():
     print("==================================================")
     print("   Running Automated Offline Backend Verification ")
@@ -77,6 +126,7 @@ def main():
     try:
         test_color_heuristic_detector()
         test_ocr_parser_logic()
+        test_database_persistence()
         print("\n==================================================")
         print("  ALL OFFLINE TESTS PASSED SUCCESSFULLY! [OK]")
         print("==================================================")

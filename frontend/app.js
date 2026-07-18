@@ -73,6 +73,10 @@ document.querySelectorAll('.tab-btn').forEach(button => {
         button.classList.add('active');
         document.getElementById(`tab-${tab}`).classList.add('active');
         activeTab = tab;
+        
+        if (tab === 'history') {
+            fetchTransactions();
+        }
     });
 });
 
@@ -726,10 +730,53 @@ function resetOCRView() {
 document.getElementById('btn-reset-ocr').onclick = resetOCRView;
 
 // CHECKOUT ACTIONS & PRINTER ANIMATOR
-document.getElementById('btn-checkout').onclick = () => {
+document.getElementById('btn-checkout').onclick = async () => {
     const items = Object.values(cart);
     if (items.length === 0) {
         alert("Cart is empty! Scan items to checkout.");
+        return;
+    }
+    
+    const transactionId = Math.floor(100000 + Math.random() * 900000);
+    const txIdStr = `TXID-${transactionId}`;
+    const now = new Date();
+    
+    let subtotal = 0;
+    items.forEach(item => {
+        subtotal += item.price * item.qty;
+    });
+    const tax = subtotal * 0.08;
+    const total = subtotal + tax;
+
+    // Send payload to SQLite database backend
+    try {
+        const response = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tx_id: txIdStr,
+                subtotal: parseFloat(subtotal.toFixed(2)),
+                tax: parseFloat(tax.toFixed(2)),
+                total: parseFloat(total.toFixed(2)),
+                items: items.map(i => ({
+                    id: i.id,
+                    name: i.name,
+                    price: parseFloat(i.price),
+                    qty: parseInt(i.qty),
+                    unit: i.unit || 'item'
+                }))
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to write to database on the backend");
+        }
+
+        const data = await response.json();
+        console.log("Transaction saved successfully:", data);
+    } catch (err) {
+        console.error("Checkout database save failed:", err);
+        alert("Checkout database save failed. Checkout cancelled.");
         return;
     }
     
@@ -737,15 +784,10 @@ document.getElementById('btn-checkout').onclick = () => {
     
     // Fill paper receipt representation
     const receiptEl = document.getElementById('paper-receipt');
-    const transactionId = Math.floor(100000 + Math.random() * 900000);
-    const now = new Date();
-    
     let itemsRows = '';
-    let subtotal = 0;
     
     items.forEach(item => {
         const rowTotal = item.price * item.qty;
-        subtotal += rowTotal;
         itemsRows += `
             <div class="r-line">
                 <span>${item.qty}x ${item.name.substring(0, 16)}</span>
@@ -753,9 +795,6 @@ document.getElementById('btn-checkout').onclick = () => {
             </div>
         `;
     });
-    
-    const tax = subtotal * 0.08;
-    const total = subtotal + tax;
     
     receiptEl.innerHTML = `
         <h4>SMART SCAN REGISTER</h4>
@@ -787,6 +826,9 @@ document.getElementById('btn-checkout').onclick = () => {
             clearInterval(tickInterval);
         }
     }, 200);
+
+    // Refresh history panel quietly in background
+    fetchTransactions();
 };
 
 document.getElementById('btn-close-modal').onclick = () => {
@@ -797,10 +839,78 @@ document.getElementById('btn-close-modal').onclick = () => {
     document.getElementById('scanner-tip').textContent = "Ready to scan next customer.";
 };
 
+// SQLite Database History helpers
+async function fetchTransactions() {
+    const listEl = document.getElementById('history-list');
+    const emptyMsgEl = document.getElementById('empty-history-msg');
+    
+    try {
+        const response = await fetch('/api/transactions');
+        const transactions = await response.json();
+        renderTransactions(transactions);
+    } catch (error) {
+        console.error("Failed to fetch transactions:", error);
+        listEl.style.display = 'none';
+        emptyMsgEl.style.display = 'flex';
+        emptyMsgEl.querySelector('p').textContent = "Could not load transaction history.";
+    }
+}
+
+function renderTransactions(transactions) {
+    const listEl = document.getElementById('history-list');
+    const emptyMsgEl = document.getElementById('empty-history-msg');
+    
+    listEl.innerHTML = '';
+    
+    if (!transactions || transactions.length === 0) {
+        listEl.style.display = 'none';
+        emptyMsgEl.style.display = 'flex';
+        return;
+    }
+    
+    listEl.style.display = 'flex';
+    emptyMsgEl.style.display = 'none';
+    
+    transactions.forEach(tx => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'history-item';
+        
+        // Format ISO UTC timestamp to local string
+        const txDate = new Date(tx.timestamp + 'Z'); // Add 'Z' so JS Date handles SQLite UTC timestamp correctly
+        const timeString = txDate.toLocaleString();
+        
+        // Create tags for products
+        const productsHtml = tx.items.map(item => 
+            `<span class="history-product-tag">${item.qty}x ${item.name}</span>`
+        ).join('');
+        
+        itemEl.innerHTML = `
+            <div class="history-item-header">
+                <span class="history-item-id">${tx.tx_id}</span>
+                <span class="history-item-time">${timeString}</span>
+            </div>
+            <div class="history-item-details">
+                <span class="history-item-summary">${tx.items.length} items purchased</span>
+                <span class="history-item-total">${formatCurrency(tx.total)}</span>
+            </div>
+            <div class="history-item-products">
+                ${productsHtml}
+            </div>
+        `;
+        listEl.appendChild(itemEl);
+    });
+}
+
+document.getElementById('btn-refresh-history').onclick = () => {
+    playBeep(440, 0.05);
+    fetchTransactions();
+};
+
 // Initialize
 window.onload = async () => {
     await fetchItems();
     initWebcam();
     initSimulation();
     initOCRMode();
+    fetchTransactions(); // Initial quiet load of history
 };

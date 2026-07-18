@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items
+from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions
 from backend.detector import GroceryDetector
 from backend.parser import parse_receipt_image
 
@@ -18,6 +18,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("main")
 
 app = FastAPI(title="Smart Checkout Counter API")
+
+@app.on_event("startup")
+def startup_event():
+    logger.info("Initializing database...")
+    init_db()
 
 # Enable CORS for development
 app.add_middleware(
@@ -35,10 +40,56 @@ class ScanRequest(BaseModel):
     image: str  # Base64 data URL
     simulate: bool = False
 
+class CheckoutItem(BaseModel):
+    id: str
+    name: str
+    price: float
+    qty: int
+    unit: str
+
+class CheckoutRequest(BaseModel):
+    tx_id: str
+    subtotal: float
+    tax: float
+    total: float
+    items: list[CheckoutItem]
+
 @app.get("/api/items")
 def get_items():
     """Retrieve the grocery items database catalog."""
     return get_all_items()
+
+@app.post("/api/checkout")
+def checkout_transaction(request: CheckoutRequest):
+    """
+    Saves a completed checkout transaction to the SQLite database.
+    """
+    try:
+        success = save_transaction(
+            tx_id=request.tx_id,
+            subtotal=request.subtotal,
+            tax=request.tax,
+            total=request.total,
+            items=[item.dict() for item in request.items]
+        )
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to save transaction to database")
+        return {"success": True, "tx_id": request.tx_id}
+    except Exception as e:
+        logger.error(f"Error during checkout database write: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/transactions")
+def get_transactions():
+    """
+    Retrieves all checkout transactions stored in the SQLite database.
+    """
+    try:
+        transactions = get_all_transactions()
+        return transactions
+    except Exception as e:
+        logger.error(f"Error fetching transactions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/scan")
 def scan_frame(request: ScanRequest):

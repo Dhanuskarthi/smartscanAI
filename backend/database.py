@@ -1,4 +1,6 @@
 # Grocery Item Database and Catalog
+import os
+import sqlite3
 
 GROCERY_ITEMS = {
     "apple": {
@@ -152,3 +154,88 @@ def get_item_by_sku(sku):
 
 def get_all_items():
     return list(GROCERY_ITEMS.values())
+
+# SQLite Database for transactions
+DB_PATH = os.path.join(os.path.dirname(__file__), "checkout.db")
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # Create transactions table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tx_id TEXT UNIQUE NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            subtotal REAL NOT NULL,
+            tax REAL NOT NULL,
+            total REAL NOT NULL
+        )
+    """)
+    # Create transaction_items table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transaction_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transaction_id INTEGER NOT NULL,
+            item_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            price REAL NOT NULL,
+            qty INTEGER NOT NULL,
+            unit TEXT NOT NULL,
+            FOREIGN KEY (transaction_id) REFERENCES transactions (id) ON DELETE CASCADE
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def save_transaction(tx_id, subtotal, tax, total, items):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO transactions (tx_id, subtotal, tax, total) VALUES (?, ?, ?, ?)",
+            (tx_id, subtotal, tax, total)
+        )
+        transaction_id = cursor.lastrowid
+        
+        for item in items:
+            cursor.execute(
+                "INSERT INTO transaction_items (transaction_id, item_id, name, price, qty, unit) VALUES (?, ?, ?, ?, ?, ?)",
+                (transaction_id, item["id"], item["name"], item["price"], item["qty"], item["unit"])
+            )
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Database error saving transaction: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_all_transactions():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        # return dicts
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM transactions ORDER BY timestamp DESC")
+        tx_rows = cursor.fetchall()
+        
+        transactions = []
+        for tx in tx_rows:
+            tx_dict = dict(tx)
+            
+            # Fetch items for this transaction
+            cursor.execute("SELECT * FROM transaction_items WHERE transaction_id = ?", (tx_dict["id"],))
+            item_rows = cursor.fetchall()
+            tx_dict["items"] = [dict(item) for item in item_rows]
+            
+            transactions.append(tx_dict)
+            
+        return transactions
+    except Exception as e:
+        print(f"Database error getting transactions: {e}")
+        return []
+    finally:
+        conn.close()
