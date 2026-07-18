@@ -174,13 +174,27 @@ else:
 # Optional Supabase Integration
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+if SUPABASE_URL:
+    # Auto-clean URL trailing paths if copy-pasted incorrectly
+    SUPABASE_URL = SUPABASE_URL.strip()
+    if SUPABASE_URL.endswith("/rest/v1/"):
+        SUPABASE_URL = SUPABASE_URL[:-9]
+    elif SUPABASE_URL.endswith("/rest/v1"):
+        SUPABASE_URL = SUPABASE_URL[:-8]
+    if SUPABASE_URL.endswith("/"):
+        SUPABASE_URL = SUPABASE_URL[:-1]
+
+if SUPABASE_KEY:
+    SUPABASE_KEY = SUPABASE_KEY.strip()
+
 USE_SUPABASE = bool(SUPABASE_URL and SUPABASE_KEY)
 
 if USE_SUPABASE:
     try:
         from supabase import create_client, Client
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        print("INFO: database: Supabase Client initialized successfully.")
+        print(f"INFO: database: Supabase Client initialized successfully with URL: {SUPABASE_URL}")
     except Exception as e:
         print(f"ERROR: database: Failed to load Supabase SDK or client: {e}")
         USE_SUPABASE = False
