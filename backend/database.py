@@ -156,7 +156,11 @@ def get_all_items():
     return list(GROCERY_ITEMS.values())
 
 # SQLite Database for transactions
-DB_PATH = os.path.join(os.path.dirname(__file__), "checkout.db")
+# Vercel serverless function environment only allows writing to /tmp/
+if os.environ.get("VERCEL"):
+    DB_PATH = "/tmp/checkout.db"
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), "checkout.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
