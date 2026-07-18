@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartScan AI - Automated Vision Checkout Counter</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Main Style -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="glow-bg"></div>
+    
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <span class="logo-icon">⚡</span>
+                <div class="logo-text">
+                    <h1>SmartScan AI</h1>
+                    <p>Computer Vision Checkout System</p>
+                </div>
+            </div>
+            <div class="header-status">
+                <div class="status-indicator">
+                    <span class="pulse-dot green" id="status-dot"></span>
+                    <span id="status-text">LANE 04 - ONLINE</span>
+                </div>
+                <div class="detector-badge" id="detector-badge">
+                    Engine: Loading...
+                </div>
+                <div class="header-time" id="live-time">00:00:00</div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <!-- Left Panel: Scanner Lane -->
+            <section class="panel-left">
+                <div class="glass-card scanner-card">
+                    <div class="card-header">
+                        <h2>Vision Scanner Lane</h2>
+                        <div class="mode-toggles">
+                            <button class="mode-btn active" id="btn-camera" data-mode="camera">Camera</button>
+                            <button class="mode-btn" id="btn-simulation" data-mode="simulation">Simulation</button>
+                            <button class="mode-btn" id="btn-upload" data-mode="upload">Upload</button>
+                        </div>
+                    </div>
+
+                    <!-- Video / Scan Viewport -->
+                    <div class="viewport-wrapper">
+                        <div class="scanner-laser"></div>
+                        
+                        <!-- Camera Mode -->
+                        <div class="viewport-content active" id="viewport-camera">
+                            <video id="webcam" autoplay playsinline muted></video>
+                            <canvas id="camera-overlay"></canvas>
+                            <div class="viewport-placeholder" id="camera-placeholder">
+                                <span class="placeholder-icon">📷</span>
+                                <p>Webcam Access Requested</p>
+                                <button class="btn btn-primary" onclick="initWebcam()">Grant Permission</button>
+                            </div>
+                        </div>
+
+                        <!-- Simulation Mode -->
+                        <div class="viewport-content" id="viewport-simulation">
+                            <div class="simulation-canvas-wrapper">
+                                <canvas id="simulation-canvas"></canvas>
+                                <div class="simulation-controls">
+                                    <p class="sim-tip">Select grocery item to simulate placing on scanner:</p>
+                                    <div class="sim-items-grid">
+                                        <button class="sim-item-btn" data-item="apple" style="--color: #FF3B30">🍎 Apple</button>
+                                        <button class="sim-item-btn" data-item="banana" style="--color: #FFCC00">🍌 Banana</button>
+                                        <button class="sim-item-btn" data-item="orange" style="--color: #FF9500">🍊 Orange</button>
+                                        <button class="sim-item-btn" data-item="broccoli" style="--color: #34C759">🥦 Broccoli</button>
+                                        <button class="sim-item-btn" data-item="bottle" style="--color: #5AC8FA">💧 Water</button>
+                                        <button class="sim-item-btn" data-item="cup" style="--color: #AF52DE">☕ Coffee</button>
+                                    </div>
+                                    <button class="btn btn-secondary w-100" id="btn-clear-sim">Remove Item</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- File Upload Mode -->
+                        <div class="viewport-content" id="viewport-upload">
+                            <div class="upload-dropzone" id="frame-dropzone">
+                                <span class="upload-icon">📥</span>
+                                <h3>Upload Grocery Frame</h3>
+                                <p>Drag & drop item image, or click to browse</p>
+                                <input type="file" id="frame-file-input" accept="image/*" style="display: none;">
+                                <button class="btn btn-secondary">Select Image</button>
+                            </div>
+                            <div class="upload-preview-wrapper" id="frame-preview-wrapper" style="display: none;">
+                                <img id="frame-preview-img" alt="Upload Preview">
+                                <canvas id="upload-overlay"></canvas>
+                                <button class="btn btn-secondary" id="btn-reset-upload">Upload Another</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="scanner-footer">
+                        <div class="tip-box">
+                            <span class="tip-icon">💡</span>
+                            <span class="tip-text" id="scanner-tip">Align grocery items centered in the camera field.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Checkout Register & OCR Parser -->
+            <section class="panel-right">
+                <div class="tabs-container">
+                    <button class="tab-btn active" data-tab="cart">Live Cart</button>
+                    <button class="tab-btn" data-tab="ocr">Backup OCR Parser</button>
+                </div>
+
+                <!-- Tab content: Live Cart -->
+                <div class="tab-content active" id="tab-cart">
+                    <div class="glass-card cart-card">
+                        <div class="cart-items-wrapper">
+                            <div class="empty-cart-view" id="empty-cart-msg">
+                                <span class="empty-cart-icon">🛒</span>
+                                <h3>Your Cart is Empty</h3>
+                                <p>Scan items under the counter camera to start checkout</p>
+                            </div>
+                            <div class="cart-items-list" id="cart-items-list" style="display: none;">
+                                <!-- Dynamic items inject here -->
+                            </div>
+                        </div>
+
+                        <!-- Summary Billing details -->
+                        <div class="cart-summary">
+                            <div class="summary-row">
+                                <span>Subtotal</span>
+                                <span id="cart-subtotal">$0.00</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Tax (8%)</span>
+                                <span id="cart-tax">$0.00</span>
+                            </div>
+                            <div class="summary-row total-row">
+                                <span>Grand Total</span>
+                                <span id="cart-total">$0.00</span>
+                            </div>
+                            
+                            <div class="cart-actions">
+                                <button class="btn btn-secondary" id="btn-clear-cart">Void All</button>
+                                <button class="btn btn-primary btn-checkout" id="btn-checkout">Complete & Pay</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab content: OCR Parser -->
+                <div class="tab-content" id="tab-ocr">
+                    <div class="glass-card ocr-card">
+                        <div class="ocr-upload-section" id="ocr-dropzone">
+                            <span class="ocr-icon">📝</span>
+                            <h3>Receipt Backup Parser</h3>
+                            <p>Upload a physical receipt to restore lost checkout logs</p>
+                            <input type="file" id="ocr-file-input" accept="image/*" style="display: none;">
+                            <div class="ocr-buttons-row">
+                                <button class="btn btn-secondary" id="btn-select-receipt">Select File</button>
+                            </div>
+                            <div class="sample-receipts-box">
+                                <p>Quick Test Samples:</p>
+                                <div class="samples-row">
+                                    <button class="btn btn-sm btn-sample" data-sample="organic_fresh.png">Organic Market</button>
+                                    <button class="btn btn-sm btn-sample" data-sample="quick_mart.png">Quick Mart</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- OCR Processing UI -->
+                        <div class="ocr-processing-section" id="ocr-processing" style="display: none;">
+                            <div class="spinner"></div>
+                            <h3 id="ocr-step-title">Initializing OCR Engine...</h3>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" id="ocr-progress-fill"></div>
+                            </div>
+                            <p id="ocr-step-desc">Loading weights and parsing structure...</p>
+                        </div>
+
+                        <!-- OCR Result Section -->
+                        <div class="ocr-result-section" id="ocr-result" style="display: none;">
+                            <div class="ocr-result-header">
+                                <h3>Invoice Structured Successfully</h3>
+                                <button class="btn btn-secondary btn-sm" id="btn-reset-ocr">Scan New Receipt</button>
+                            </div>
+                            
+                            <div class="ocr-result-grid">
+                                <!-- Col 1: Raw OCR text -->
+                                <div class="ocr-text-column">
+                                    <h4>Raw OCR Stream</h4>
+                                    <pre class="raw-ocr-text" id="ocr-raw-text"></pre>
+                                </div>
+                                
+                                <!-- Col 2: Structured items -->
+                                <div class="ocr-structured-column">
+                                    <div class="invoice-meta">
+                                        <div class="meta-item">
+                                            <span class="meta-label">Merchant:</span>
+                                            <span class="meta-val" id="ocr-merchant">-</span>
+                                        </div>
+                                        <div class="meta-item">
+                                            <span class="meta-label">Date:</span>
+                                            <span class="meta-val" id="ocr-date">-</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <h4>Detected Line Items</h4>
+                                    <div class="ocr-items-list" id="ocr-items-list">
+                                        <!-- Dynamic OCR items -->
+                                    </div>
+
+                                    <div class="ocr-totals">
+                                        <div class="ocr-total-row">
+                                            <span>Subtotal:</span>
+                                            <span id="ocr-subtotal">$0.00</span>
+                                        </div>
+                                        <div class="ocr-total-row">
+                                            <span>Tax:</span>
+                                            <span id="ocr-tax">$0.00</span>
+                                        </div>
+                                        <div class="ocr-total-row total">
+                                            <span>Total:</span>
+                                            <span id="ocr-total">$0.00</span>
+                                        </div>
+                                    </div>
+
+                                    <button class="btn btn-primary w-100" id="btn-import-ocr">Import Items to Cart</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Success Modal Overlay -->
+    <div class="modal-overlay" id="checkout-modal">
+        <div class="modal-card">
+            <span class="success-icon">✓</span>
+            <h2>Transaction Approved</h2>
+            <p>Receipt printing, please wait...</p>
+            
+            <!-- Printed Receipt Box -->
+            <div class="receipt-printer-slot">
+                <div class="paper-receipt" id="paper-receipt">
+                    <!-- Dynamic receipt -->
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="btn-close-modal">New Customer</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
