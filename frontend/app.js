@@ -76,6 +76,8 @@ document.querySelectorAll('.tab-btn').forEach(button => {
         
         if (tab === 'history') {
             fetchTransactions();
+        } else if (tab === 'admin') {
+            fetchAdminCatalog();
         }
     });
 });
@@ -904,6 +906,116 @@ function renderTransactions(transactions) {
 document.getElementById('btn-refresh-history').onclick = () => {
     playBeep(440, 0.05);
     fetchTransactions();
+};
+
+// Admin Panel catalog management
+async function fetchAdminCatalog() {
+    const listEl = document.getElementById('admin-items-list');
+    listEl.innerHTML = '<div style="text-align: center; padding: 20px;"><div class="spinner" style="margin: 0 auto 10px auto;"></div>Loading catalog...</div>';
+    
+    try {
+        const response = await fetch('/api/items');
+        const items = await response.json();
+        // Keep our global databaseItems cached updated as well!
+        databaseItems = items;
+        renderAdminCatalog(items);
+    } catch (error) {
+        console.error("Failed to fetch admin catalog:", error);
+        listEl.innerHTML = '<div style="color: var(--accent); text-align: center; padding: 20px;">Could not load product catalog.</div>';
+    }
+}
+
+function renderAdminCatalog(items) {
+    const listEl = document.getElementById('admin-items-list');
+    listEl.innerHTML = '';
+    
+    if (!items || items.length === 0) {
+        listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No products found in database.</div>';
+        return;
+    }
+    
+    items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'admin-product-row';
+        row.innerHTML = `
+            <div class="admin-product-info">
+                <div class="admin-product-icon">${item.icon}</div>
+                <div class="admin-product-details">
+                    <h4>${item.name}</h4>
+                    <span>SKU: ${item.sku} | Unit: ${item.unit} | Category: ${item.category}</span>
+                </div>
+            </div>
+            <div class="admin-price-update-form" data-id="${item.id}">
+                <div class="admin-price-input-wrapper">
+                    <span class="admin-currency-prefix">₹</span>
+                    <input type="number" class="admin-price-input" step="0.01" min="0" value="${item.price.toFixed(2)}">
+                </div>
+                <button class="btn btn-primary admin-save-btn" onclick="saveProductPrice('${item.id}', this)">Save</button>
+            </div>
+        `;
+        listEl.appendChild(row);
+    });
+}
+
+async function saveProductPrice(id, buttonEl) {
+    const rowEl = buttonEl.closest('.admin-price-update-form');
+    const inputEl = rowEl.querySelector('.admin-price-input');
+    const newPrice = parseFloat(inputEl.value);
+    
+    if (isNaN(newPrice) || newPrice < 0) {
+        alert("Please enter a valid price (>= 0).");
+        return;
+    }
+    
+    // Disable inputs during save
+    inputEl.disabled = true;
+    buttonEl.disabled = true;
+    const originalText = buttonEl.textContent;
+    buttonEl.textContent = "Saving...";
+    
+    try {
+        const response = await fetch('/api/admin/update-price', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, price: newPrice })
+        });
+        
+        if (!response.ok) {
+            throw new Error("Update price API failed");
+        }
+        
+        playBeep(880, 0.05);
+        buttonEl.textContent = "Saved ✓";
+        buttonEl.style.backgroundColor = "var(--primary)";
+        buttonEl.style.color = "#004D20";
+        
+        // Refresh local cache and list after a short delay
+        setTimeout(async () => {
+            buttonEl.style.backgroundColor = "";
+            buttonEl.style.color = "";
+            buttonEl.textContent = originalText;
+            inputEl.disabled = false;
+            buttonEl.disabled = false;
+            // Fetch database items again so scan and cart logic uses the new prices immediately!
+            await fetchItems();
+            fetchAdminCatalog();
+        }, 1200);
+        
+    } catch (error) {
+        console.error("Error updating price:", error);
+        alert("Failed to update product price in the database.");
+        inputEl.disabled = false;
+        buttonEl.disabled = false;
+        buttonEl.textContent = originalText;
+    }
+}
+
+// Make globally accessible
+window.saveProductPrice = saveProductPrice;
+
+document.getElementById('btn-refresh-admin').onclick = () => {
+    playBeep(440, 0.05);
+    fetchAdminCatalog();
 };
 
 // Initialize

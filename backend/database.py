@@ -136,25 +136,6 @@ GROCERY_ITEMS = {
 
 COCO_TO_GROCERY = {item["coco_class"]: item["id"] for item in GROCERY_ITEMS.values() if "coco_class" in item}
 
-def get_item_by_id(item_id):
-    return GROCERY_ITEMS.get(item_id)
-
-def get_item_by_coco_class(coco_class):
-    item_id = COCO_TO_GROCERY.get(coco_class)
-    if item_id:
-        return GROCERY_ITEMS.get(item_id)
-    return None
-
-def get_item_by_sku(sku):
-    sku_clean = sku.strip().upper()
-    for item in GROCERY_ITEMS.values():
-        if item["sku"] == sku_clean:
-            return item
-    return None
-
-def get_all_items():
-    return list(GROCERY_ITEMS.values())
-
 # SQLite Database for transactions
 # Vercel serverless function environment only allows writing to /tmp/
 if os.environ.get("VERCEL"):
@@ -165,7 +146,23 @@ else:
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    # Create transactions table
+    
+    # 1. Create products table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            price REAL NOT NULL,
+            unit TEXT NOT NULL,
+            category TEXT NOT NULL,
+            sku TEXT NOT NULL,
+            color TEXT NOT NULL,
+            icon TEXT NOT NULL,
+            coco_class TEXT
+        )
+    """)
+    
+    # 2. Create transactions table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,7 +173,8 @@ def init_db():
             total REAL NOT NULL
         )
     """)
-    # Create transaction_items table
+    
+    # 3. Create transaction_items table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS transaction_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -189,8 +187,112 @@ def init_db():
             FOREIGN KEY (transaction_id) REFERENCES transactions (id) ON DELETE CASCADE
         )
     """)
+    
+    # 4. Check if products table is empty; if so, populate it with default values
+    cursor.execute("SELECT COUNT(*) FROM products")
+    count = cursor.fetchone()[0]
+    if count == 0:
+        for item in GROCERY_ITEMS.values():
+            cursor.execute(
+                """INSERT INTO products (id, name, price, unit, category, sku, color, icon, coco_class) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    item["id"],
+                    item["name"],
+                    item["price"],
+                    item["unit"],
+                    item["category"],
+                    item["sku"],
+                    item["color"],
+                    item["icon"],
+                    item.get("coco_class")
+                )
+            )
+        conn.commit()
+        
     conn.commit()
     conn.close()
+
+def get_item_by_id(item_id):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM products WHERE id = ?", (item_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    except Exception as e:
+        print(f"Error getting product by id: {e}")
+        return GROCERY_ITEMS.get(item_id)
+    finally:
+        conn.close()
+
+def get_item_by_coco_class(coco_class):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM products WHERE coco_class = ?", (coco_class,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    except Exception as e:
+        print(f"Error getting product by coco_class: {e}")
+        for item in GROCERY_ITEMS.values():
+            if item.get("coco_class") == coco_class:
+                return item
+        return None
+    finally:
+        conn.close()
+
+def get_item_by_sku(sku):
+    sku_clean = sku.strip().upper()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM products WHERE UPPER(sku) = ?", (sku_clean,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    except Exception as e:
+        print(f"Error getting product by sku: {e}")
+        for item in GROCERY_ITEMS.values():
+            if item["sku"] == sku_clean:
+                return item
+        return None
+    finally:
+        conn.close()
+
+def get_all_items():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM products")
+        rows = cursor.fetchall()
+        if not rows:
+            return list(GROCERY_ITEMS.values())
+        return [dict(row) for row in rows]
+    except Exception as e:
+        print(f"Error getting all products: {e}")
+        return list(GROCERY_ITEMS.values())
+    finally:
+        conn.close()
+
+def update_product_price(product_id, new_price):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE products SET price = ? WHERE id = ?",
+            (new_price, product_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Database error updating product price: {e}")
+        return False
+    finally:
+        conn.close()
 
 def save_transaction(tx_id, subtotal, tax, total, items):
     try:

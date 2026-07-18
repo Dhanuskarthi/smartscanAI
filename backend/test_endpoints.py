@@ -119,14 +119,62 @@ def test_database_persistence():
             
     print("[PASS] SQLite transaction persistence passed.")
 
+def test_admin_catalog_updates():
+    print("\nTesting Admin Catalog updates...")
+    from backend.database import init_db, get_item_by_id, update_product_price, DB_PATH
+    
+    # Clean test database path if exists to start fresh
+    if os.path.exists(DB_PATH):
+        try:
+            os.remove(DB_PATH)
+        except Exception:
+            pass
+            
+    # Initialize
+    init_db()
+    
+    # Get default price of apple (should be 180.00)
+    item = get_item_by_id("apple")
+    assert item is not None, "Product apple not found"
+    assert item["price"] == 180.00, f"Expected default price 180.0, got {item['price']}"
+    
+    # Update price of apple to 200.00
+    success = update_product_price("apple", 200.00)
+    assert success, "Failed to update product price"
+    
+    # Get apple details again and check price
+    item_updated = get_item_by_id("apple")
+    assert item_updated["price"] == 200.00, f"Expected updated price 200.0, got {item_updated['price']}"
+    
+    # Cleanup
+    if os.path.exists(DB_PATH):
+        try:
+            os.remove(DB_PATH)
+        except Exception:
+            pass
+            
+    print("[PASS] Admin Catalog update test passed.")
+
 def main():
     print("==================================================")
     print("   Running Automated Offline Backend Verification ")
     print("==================================================")
+    
+    # Initialize DB for testing to avoid "no such table" warnings
+    from backend.database import init_db, DB_PATH
+    import os
+    if os.path.exists(DB_PATH):
+        try:
+            os.remove(DB_PATH)
+        except Exception:
+            pass
+    init_db()
+    
     try:
         test_color_heuristic_detector()
         test_ocr_parser_logic()
         test_database_persistence()
+        test_admin_catalog_updates()
         print("\n==================================================")
         print("  ALL OFFLINE TESTS PASSED SUCCESSFULLY! [OK]")
         print("==================================================")
@@ -136,6 +184,13 @@ def main():
     except Exception as e:
         print(f"\n[ERROR] Test run encountered error: {e}")
         sys.exit(1)
+    finally:
+        # Cleanup test database at the very end
+        if os.path.exists(DB_PATH):
+            try:
+                os.remove(DB_PATH)
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     main()

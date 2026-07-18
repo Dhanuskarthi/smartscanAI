@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions
+from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_price
 from backend.detector import GroceryDetector
 from backend.parser import parse_receipt_image
 
@@ -54,10 +54,28 @@ class CheckoutRequest(BaseModel):
     total: float
     items: list[CheckoutItem]
 
+class UpdatePriceRequest(BaseModel):
+    id: str
+    price: float
+
 @app.get("/api/items")
 def get_items():
     """Retrieve the grocery items database catalog."""
     return get_all_items()
+
+@app.post("/api/admin/update-price")
+def update_price(request: UpdatePriceRequest):
+    """
+    Updates the price of a specific product in the SQLite catalog.
+    """
+    try:
+        success = update_product_price(request.id, request.price)
+        if not success:
+            raise HTTPException(status_code=404, detail="Product not found or update failed")
+        return {"success": True, "id": request.id, "new_price": request.price}
+    except Exception as e:
+        logger.error(f"Error updating product price: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/checkout")
 def checkout_transaction(request: CheckoutRequest):

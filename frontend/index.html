@@ -116,6 +116,7 @@
                     <button class="tab-btn active" data-tab="cart">Live Cart</button>
                     <button class="tab-btn" data-tab="ocr">Backup OCR Parser</button>
                     <button class="tab-btn" data-tab="history">Transaction History</button>
+                    <button class="tab-btn" data-tab="admin">Admin Panel</button>
                 </div>
 
                 <!-- Tab content: Live Cart -->
@@ -254,6 +255,24 @@
                             </div>
                             <div class="history-list" id="history-list" style="display: none;">
                                 <!-- Dynamic transactions inject here -->
+                            </div>
+                        </div>
+                </div>
+
+                <!-- Tab content: Admin Panel -->
+                <div class="tab-content" id="tab-admin">
+                    <div class="glass-card admin-card">
+                        <div class="card-header">
+                            <h2>Admin Product Management</h2>
+                            <button class="btn btn-secondary btn-sm" id="btn-refresh-admin">Refresh Catalog</button>
+                        </div>
+                        <div class="admin-list-wrapper">
+                            <div class="admin-tip-bar">
+                                <span class="tip-icon">⚙️</span>
+                                <span class="tip-text">Set prices in Indian Rupees (₹). Price updates apply immediately to checkout and scan logic.</span>
+                            </div>
+                            <div class="admin-items-list" id="admin-items-list">
+                                <!-- Dynamic admin list items inject here -->
                             </div>
                         </div>
                     </div>
