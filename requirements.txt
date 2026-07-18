@@ -6,3 +6,5 @@ opencv-python-headless>=4.7.0
 onnxruntime>=1.15.0
 pytesseract>=0.3.10
 pillow>=9.5.0
+supabase>=2.0.3
+python-dotenv>=1.0.0

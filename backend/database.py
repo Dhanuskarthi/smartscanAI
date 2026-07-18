@@ -1,6 +1,10 @@
 # Grocery Item Database and Catalog
 import os
 import sqlite3
+from dotenv import load_dotenv
+
+# Load local .env file
+load_dotenv()
 
 GROCERY_ITEMS = {
     "apple": {
@@ -167,7 +171,48 @@ if os.environ.get("VERCEL"):
 else:
     DB_PATH = os.path.join(os.path.dirname(__file__), "checkout.db")
 
+# Optional Supabase Integration
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+USE_SUPABASE = bool(SUPABASE_URL and SUPABASE_KEY)
+
+if USE_SUPABASE:
+    try:
+        from supabase import create_client, Client
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("INFO: database: Supabase Client initialized successfully.")
+    except Exception as e:
+        print(f"ERROR: database: Failed to load Supabase SDK or client: {e}")
+        USE_SUPABASE = False
+
 def init_db():
+    if USE_SUPABASE:
+        try:
+            # Check if products already exist
+            res = supabase.table("products").select("count", count="exact").limit(1).execute()
+            count = res.count if res.count is not None else 0
+            if count == 0:
+                print("INFO: database: Populating default grocery items to Supabase...")
+                payload = []
+                for item in GROCERY_ITEMS.values():
+                    payload.append({
+                        "id": item["id"],
+                        "name": item["name"],
+                        "price": item["price"],
+                        "cost_price": item["cost_price"],
+                        "stock": item["stock"],
+                        "unit": item["unit"],
+                        "category": item["category"],
+                        "sku": item["sku"],
+                        "color": item["color"],
+                        "icon": item["icon"],
+                        "coco_class": item.get("coco_class")
+                    })
+                supabase.table("products").insert(payload).execute()
+        except Exception as e:
+            print(f"WARNING: database: Supabase init table populating failed/skipped: {e}")
+        return
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -256,6 +301,16 @@ def init_db():
     conn.close()
 
 def get_item_by_id(item_id):
+    if USE_SUPABASE:
+        try:
+            res = supabase.table("products").select("*").eq("id", item_id).execute()
+            if res.data:
+                return res.data[0]
+            return None
+        except Exception as e:
+            print(f"Supabase error getting item: {e}")
+            return GROCERY_ITEMS.get(item_id)
+            
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -267,9 +322,23 @@ def get_item_by_id(item_id):
         print(f"Error getting product by id: {e}")
         return GROCERY_ITEMS.get(item_id)
     finally:
-        conn.close()
+        if not USE_SUPABASE:
+            conn.close()
 
 def get_item_by_coco_class(coco_class):
+    if USE_SUPABASE:
+        try:
+            res = supabase.table("products").select("*").eq("coco_class", coco_class).execute()
+            if res.data:
+                return res.data[0]
+            return None
+        except Exception as e:
+            print(f"Supabase error getting item by coco class: {e}")
+            for item in GROCERY_ITEMS.values():
+                if item.get("coco_class") == coco_class:
+                    return item
+            return None
+            
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -284,10 +353,24 @@ def get_item_by_coco_class(coco_class):
                 return item
         return None
     finally:
-        conn.close()
+        if not USE_SUPABASE:
+            conn.close()
 
 def get_item_by_sku(sku):
     sku_clean = sku.strip().upper()
+    if USE_SUPABASE:
+        try:
+            res = supabase.table("products").select("*").ilike("sku", sku_clean).execute()
+            if res.data:
+                return res.data[0]
+            return None
+        except Exception as e:
+            print(f"Supabase error getting item by sku: {e}")
+            for item in GROCERY_ITEMS.values():
+                if item["sku"] == sku_clean:
+                    return item
+            return None
+            
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -302,9 +385,18 @@ def get_item_by_sku(sku):
                 return item
         return None
     finally:
-        conn.close()
+        if not USE_SUPABASE:
+            conn.close()
 
 def get_all_items():
+    if USE_SUPABASE:
+        try:
+            res = supabase.table("products").select("*").execute()
+            return res.data or []
+        except Exception as e:
+            print(f"Supabase error getting all items: {e}")
+            return list(GROCERY_ITEMS.values())
+            
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -318,9 +410,22 @@ def get_all_items():
         print(f"Error getting all products: {e}")
         return list(GROCERY_ITEMS.values())
     finally:
-        conn.close()
+        if not USE_SUPABASE:
+            conn.close()
 
 def update_product_details(product_id, price, cost_price, stock):
+    if USE_SUPABASE:
+        try:
+            res = supabase.table("products").update({
+                "price": price,
+                "cost_price": cost_price,
+                "stock": stock
+            }).eq("id", product_id).execute()
+            return len(res.data) > 0
+        except Exception as e:
+            print(f"Supabase error updating product details: {e}")
+            return False
+            
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -334,9 +439,54 @@ def update_product_details(product_id, price, cost_price, stock):
         print(f"Database error updating product details: {e}")
         return False
     finally:
-        conn.close()
+        if not USE_SUPABASE:
+            conn.close()
 
 def save_transaction(tx_id, subtotal, tax, total, items):
+    if USE_SUPABASE:
+        try:
+            # 1. Insert transaction
+            tx_res = supabase.table("transactions").insert({
+                "tx_id": tx_id,
+                "subtotal": subtotal,
+                "tax": tax,
+                "total": total
+            }).execute()
+            
+            if not tx_res.data:
+                return False
+                
+            transaction_id = tx_res.data[0]["id"]
+            
+            for item in items:
+                # Get the cost price
+                prod_res = supabase.table("products").select("cost_price, stock").eq("id", item["id"]).execute()
+                cost_price = 0.0
+                current_stock = 0.0
+                if prod_res.data:
+                    cost_price = prod_res.data[0].get("cost_price", 0.0)
+                    current_stock = prod_res.data[0].get("stock", 0.0)
+                
+                # Write transaction item record
+                supabase.table("transaction_items").insert({
+                    "transaction_id": transaction_id,
+                    "item_id": item["id"],
+                    "name": item["name"],
+                    "price": item["price"],
+                    "cost_price": cost_price,
+                    "qty": item["qty"],
+                    "unit": item["unit"]
+                }).execute()
+                
+                # Deduct stock
+                new_stock = max(0.0, current_stock - item["qty"])
+                supabase.table("products").update({"stock": new_stock}).eq("id", item["id"]).execute()
+                
+            return True
+        except Exception as e:
+            print(f"Supabase error saving transaction: {e}")
+            return False
+
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -370,9 +520,25 @@ def save_transaction(tx_id, subtotal, tax, total, items):
         print(f"Database error saving transaction: {e}")
         return False
     finally:
-        conn.close()
+        if not USE_SUPABASE:
+            conn.close()
 
 def get_all_transactions():
+    if USE_SUPABASE:
+        try:
+            tx_res = supabase.table("transactions").select("*").order("timestamp", desc=True).execute()
+            transactions = tx_res.data or []
+            
+            for tx in transactions:
+                # Fetch transaction items
+                items_res = supabase.table("transaction_items").select("*").eq("transaction_id", tx["id"]).execute()
+                tx["items"] = items_res.data or []
+                
+            return transactions
+        except Exception as e:
+            print(f"Supabase error getting transactions: {e}")
+            return []
+
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -397,9 +563,41 @@ def get_all_transactions():
         print(f"Database error getting transactions: {e}")
         return []
     finally:
-        conn.close()
+        if not USE_SUPABASE:
+            conn.close()
 
 def get_financial_summary():
+    if USE_SUPABASE:
+        try:
+            # Fetch revenue
+            tx_res = supabase.table("transactions").select("subtotal").execute()
+            revenue = sum(row["subtotal"] for row in tx_res.data) if tx_res.data else 0.0
+            
+            # Fetch cost
+            items_res = supabase.table("transaction_items").select("qty, cost_price").execute()
+            total_cost = sum(row["qty"] * row["cost_price"] for row in items_res.data) if items_res.data else 0.0
+            
+            profit = revenue - total_cost
+            
+            # Count low stock
+            low_stock_res = supabase.table("products").select("id", count="exact").lt("stock", 15.0).execute()
+            low_stock_count = low_stock_res.count if low_stock_res.count is not None else 0
+            
+            return {
+                "revenue": round(revenue, 2),
+                "cost": round(total_cost, 2),
+                "profit": round(profit, 2),
+                "low_stock_count": low_stock_count
+            }
+        except Exception as e:
+            print(f"Supabase error getting financial summary: {e}")
+            return {
+                "revenue": 0.0,
+                "cost": 0.0,
+                "profit": 0.0,
+                "low_stock_count": 0
+            }
+
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -437,4 +635,5 @@ def get_financial_summary():
             "low_stock_count": 0
         }
     finally:
-        conn.close()
+        if not USE_SUPABASE:
+            conn.close()
