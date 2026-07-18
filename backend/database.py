@@ -6,8 +6,8 @@ GROCERY_ITEMS = {
     "apple": {
         "id": "apple",
         "name": "Honeycrisp Apple",
-        "price": 1.99,
-        "unit": "lb",
+        "price": 180.00,
+        "unit": "kg",
         "category": "Produce",
         "sku": "4011-APP",
         "color": "#FF3B30",
@@ -17,8 +17,8 @@ GROCERY_ITEMS = {
     "banana": {
         "id": "banana",
         "name": "Organic Banana",
-        "price": 0.59,
-        "unit": "lb",
+        "price": 60.00,
+        "unit": "kg",
         "category": "Produce",
         "sku": "4011-BAN",
         "color": "#FFCC00",
@@ -28,8 +28,8 @@ GROCERY_ITEMS = {
     "orange": {
         "id": "orange",
         "name": "Navel Orange",
-        "price": 1.29,
-        "unit": "lb",
+        "price": 120.00,
+        "unit": "kg",
         "category": "Produce",
         "sku": "3107-ORN",
         "color": "#FF9500",
@@ -39,8 +39,8 @@ GROCERY_ITEMS = {
     "broccoli": {
         "id": "broccoli",
         "name": "Crown Broccoli",
-        "price": 2.49,
-        "unit": "lb",
+        "price": 150.00,
+        "unit": "kg",
         "category": "Produce",
         "sku": "4060-BRC",
         "color": "#34C759",
@@ -50,8 +50,8 @@ GROCERY_ITEMS = {
     "carrot": {
         "id": "carrot",
         "name": "Organic Carrots",
-        "price": 1.89,
-        "unit": "lb",
+        "price": 50.00,
+        "unit": "kg",
         "category": "Produce",
         "sku": "4094-CRT",
         "color": "#FF9500",
@@ -61,7 +61,7 @@ GROCERY_ITEMS = {
     "bottle": {
         "id": "bottle",
         "name": "Spring Water Bottle",
-        "price": 0.99,
+        "price": 20.00,
         "unit": "item",
         "category": "Beverage",
         "sku": "012000000133",
@@ -72,7 +72,7 @@ GROCERY_ITEMS = {
     "cup": {
         "id": "cup",
         "name": "Artisan Coffee Cup",
-        "price": 2.49,
+        "price": 90.00,
         "unit": "item",
         "category": "Beverage",
         "sku": "073366115933",
@@ -83,7 +83,7 @@ GROCERY_ITEMS = {
     "bowl": {
         "id": "bowl",
         "name": "Fresh Salad Bowl",
-        "price": 6.99,
+        "price": 180.00,
         "unit": "item",
         "category": "Deli",
         "sku": "099482419447",
@@ -94,8 +94,8 @@ GROCERY_ITEMS = {
     # Extra items that can be scanned via barcode/manual/OCR
     "milk": {
         "id": "milk",
-        "name": "Whole Milk 1Gal",
-        "price": 3.49,
+        "name": "Whole Milk 1L",
+        "price": 60.00,
         "unit": "item",
         "category": "Dairy",
         "sku": "078742351866",
@@ -104,8 +104,8 @@ GROCERY_ITEMS = {
     },
     "bread": {
         "id": "bread",
-        "name": "Sliced Sourdough",
-        "price": 2.99,
+        "name": "Sliced White Bread",
+        "price": 45.00,
         "unit": "item",
         "category": "Bakery",
         "sku": "072250037127",
@@ -115,7 +115,7 @@ GROCERY_ITEMS = {
     "cereal": {
         "id": "cereal",
         "name": "Honey Nut O's Cereal",
-        "price": 4.59,
+        "price": 160.00,
         "unit": "item",
         "category": "Pantry",
         "sku": "016000123991",
@@ -125,7 +125,7 @@ GROCERY_ITEMS = {
     "cookies": {
         "id": "cookies",
         "name": "Chocolate Chip Cookies",
-        "price": 3.89,
+        "price": 40.00,
         "unit": "item",
         "category": "Bakery",
         "sku": "044000032029",

@@ -50,13 +50,13 @@ def test_ocr_parser_logic():
     SUPERMARKET EXPRESS
     DATE: 07/18/2026   TIME: 14:32
     --------------------------------
-    HONEYCRISP APPLE          $1.99
-    WHOLE MILK 1GAL           $3.49
-    SLICED SOURDOUGH          $2.99
+    HONEYCRISP APPLE          Rs. 180.00
+    WHOLE MILK 1L             Rs. 60.00
+    SLICED WHITE BREAD        Rs. 45.00
     --------------------------------
-    SUBTOTAL                  $8.47
-    TAX 8%                    $0.68
-    TOTAL                     $9.15
+    SUBTOTAL                  Rs. 285.00
+    TAX 8%                    Rs. 22.80
+    TOTAL                     Rs. 307.80
     """
     
     parsed = parse_receipt_text(sample_text)
@@ -67,7 +67,7 @@ def test_ocr_parser_logic():
     assert parsed["items"][0]["id"] == "apple", f"First item should resolve to apple, got {parsed['items'][0]['id']}"
     assert parsed["items"][1]["id"] == "milk", f"Second item should resolve to milk, got {parsed['items'][1]['id']}"
     assert parsed["items"][2]["id"] == "bread", f"Third item should resolve to bread, got {parsed['items'][2]['id']}"
-    assert parsed["total"] == 9.15, f"Expected total 9.15, got {parsed['total']}"
+    assert parsed["total"] == 307.80, f"Expected total 307.80, got {parsed['total']}"
     print("[PASS] Regex invoice parser passed.")
 
 def test_database_persistence():
@@ -86,13 +86,13 @@ def test_database_persistence():
     
     # Save a test transaction
     tx_items = [
-        {"id": "apple", "name": "Honeycrisp Apple", "price": 1.99, "qty": 2, "unit": "lb"},
-        {"id": "milk", "name": "Whole Milk 1Gal", "price": 3.49, "qty": 1, "unit": "item"}
+        {"id": "apple", "name": "Honeycrisp Apple", "price": 180.00, "qty": 2, "unit": "kg"},
+        {"id": "milk", "name": "Whole Milk 1L", "price": 60.00, "qty": 1, "unit": "item"}
     ]
     tx_id = "TXID-TEST12345"
-    subtotal = 7.47
-    tax = 0.60
-    total = 8.07
+    subtotal = 420.00
+    tax = 33.60
+    total = 453.60
     
     success = save_transaction(tx_id, subtotal, tax, total, tx_items)
     assert success, "Failed to save transaction to SQLite database"

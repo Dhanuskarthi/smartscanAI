@@ -32,17 +32,17 @@ MOCK_RECEIPTS = {
 DATE: 07/18/2026   TIME: 14:32
 CASHIER: SARAH      ST#: 04
 --------------------------------
-ORGANIC BANANA (1.5 lb)   $0.89
-HONEYCRISP APPLE          $1.99
-WHOLE MILK 1GAL           $3.49
-SLICED SOURDOUGH          $2.99
-HONEY NUT O'S CEREAL      $4.59
+ORGANIC BANANA (1.5 kg)   Rs. 90.00
+HONEYCRISP APPLE          Rs. 180.00
+WHOLE MILK 1L             Rs. 60.00
+SLICED WHITE BREAD        Rs. 45.00
+HONEY NUT O'S CEREAL      Rs. 160.00
 --------------------------------
-SUBTOTAL                  $13.95
-TAX 8%                    $1.12
-TOTAL                     $15.07
+SUBTOTAL                  Rs. 535.00
+TAX 8%                    Rs. 42.80
+TOTAL                     Rs. 577.80
 --------------------------------
-CARD: ************4321    $15.07
+CARD: ************4321    Rs. 577.80
           THANK YOU!
         PLEASE VISIT US
      WWW.ORGANICFRESH.COM
@@ -51,15 +51,15 @@ CARD: ************4321    $15.07
             "merchant": "Organic Fresh Market",
             "date": "07/18/2026 14:32",
             "items": [
-                {"name": "Organic Banana", "qty": 1, "price": 0.89, "id": "banana"},
-                {"name": "Honeycrisp Apple", "qty": 1, "price": 1.99, "id": "apple"},
-                {"name": "Whole Milk 1Gal", "qty": 1, "price": 3.49, "id": "milk"},
-                {"name": "Sliced Sourdough", "qty": 1, "price": 2.99, "id": "bread"},
-                {"name": "Honey Nut O's Cereal", "qty": 1, "price": 4.59, "id": "cereal"}
+                {"name": "Organic Banana", "qty": 1, "price": 90.00, "id": "banana"},
+                {"name": "Honeycrisp Apple", "qty": 1, "price": 180.00, "id": "apple"},
+                {"name": "Whole Milk 1L", "qty": 1, "price": 60.00, "id": "milk"},
+                {"name": "Sliced White Bread", "qty": 1, "price": 45.00, "id": "bread"},
+                {"name": "Honey Nut O's Cereal", "qty": 1, "price": 160.00, "id": "cereal"}
             ],
-            "subtotal": 13.95,
-            "tax": 1.12,
-            "total": 15.07,
+            "subtotal": 535.00,
+            "tax": 42.80,
+            "total": 577.80,
             "is_simulated": True
         }
     },
@@ -71,29 +71,29 @@ CARD: ************4321    $15.07
         
 18-07-2026  18:15:02  REG 02
 --------------------------------
-SPRING WATER BOTTLE       $0.99
-CHOCOLATE CHIP COOKIES    $3.89
-ARTISAN COFFEE CUP        $2.49
+SPRING WATER BOTTLE       Rs. 20.00
+CHOCOLATE CHIP COOKIES    Rs. 40.00
+ARTISAN COFFEE CUP        Rs. 90.00
 --------------------------------
-SUBTOTAL                  $7.37
-TAX                       $0.59
-TOTAL                     $7.96
+SUBTOTAL                  Rs. 150.00
+TAX                       Rs. 7.50
+TOTAL                     Rs. 157.50
 --------------------------------
-CASH                      $10.00
-CHANGE                    $2.04
+CASH                      Rs. 200.00
+CHANGE                    Rs. 42.50
       HAVE A GREAT DAY!
 """,
         "parsed": {
             "merchant": "Quick Mart #8421",
             "date": "18-07-2026 18:15:02",
             "items": [
-                {"name": "Spring Water Bottle", "qty": 1, "price": 0.99, "id": "bottle"},
-                {"name": "Chocolate Chip Cookies", "qty": 1, "price": 3.89, "id": "cookies"},
-                {"name": "Artisan Coffee Cup", "qty": 1, "price": 2.49, "id": "cup"}
+                {"name": "Spring Water Bottle", "qty": 1, "price": 20.00, "id": "bottle"},
+                {"name": "Chocolate Chip Cookies", "qty": 1, "price": 40.00, "id": "cookies"},
+                {"name": "Artisan Coffee Cup", "qty": 1, "price": 90.00, "id": "cup"}
             ],
-            "subtotal": 7.37,
-            "tax": 0.59,
-            "total": 7.96,
+            "subtotal": 150.00,
+            "tax": 7.50,
+            "total": 157.50,
             "is_simulated": True
         }
     }
@@ -134,15 +134,15 @@ def parse_receipt_text(text):
             date_str += " " + time_match.group(1)
 
     # 3. Parse Subtotal, Tax, Total
-    subtotal_match = re.search(r'SUBTOTAL\s+\$?(\d+\.\d{2})', text)
+    subtotal_match = re.search(r'SUBTOTAL\s+(?:\$|RS\.?|₹)?\s*(\d+\.\d{2})', text)
     if subtotal_match:
         subtotal = float(subtotal_match.group(1))
         
-    tax_match = re.search(r'(?:TAX|VAT).*?\$?(\d+\.\d{2})', text)
+    tax_match = re.search(r'(?:TAX|VAT).*?(?:\$|RS\.?|₹)?\s*(\d+\.\d{2})', text)
     if tax_match:
         tax = float(tax_match.group(1))
 
-    total_match = re.search(r'\bTOTAL\s+\$?(\d+\.\d{2})', text)
+    total_match = re.search(r'\bTOTAL\s+(?:\$|RS\.?|₹)?\s*(\d+\.\d{2})', text)
     if total_match:
         total = float(total_match.group(1))
 
@@ -155,9 +155,9 @@ def parse_receipt_text(text):
         if any(keyword in line for keyword in skip_keywords):
             continue
         
-        # Pattern matches: ITEM_NAME  [maybe QTY]  [maybe $] PRICE
-        # Example: HONEYCRISP APPLE $1.99 or MILK 1GAL 3.49
-        item_match = re.search(r'^([A-Z0-9\s\-&/\(\)\.]+?)\s+\$?(\d+\.\d{2})', line)
+        # Pattern matches: ITEM_NAME  [maybe QTY]  [maybe $ / Rs. / ₹] PRICE
+        # Example: HONEYCRISP APPLE Rs. 180.00 or MILK 1GAL 60.00
+        item_match = re.search(r'^([A-Z0-9\s\-&/\(\)\.]+?)\s+(?:\$|RS\.?|₹)?\s*(\d+\.\d{2})', line)
         if item_match:
             item_name = item_match.group(1).strip()
             price = float(item_match.group(2))
