@@ -436,8 +436,8 @@ function processScannedDetections(detections) {
         const item_id = det.id;
         const confidence = det.confidence;
         
-        // Threshold check and cooldown logic (lock scan for 2 seconds to avoid fast repeating)
-        if (confidence > 0.70) {
+        // Threshold check: allow scanning with >= 60% confidence to handle typical uploads/scans safely
+        if (confidence >= 0.60) {
             const lastScan = scanCooldowns[item_id] || 0;
             if (now - lastScan > 2200) {
                 // Perform Scan Add!
@@ -512,13 +512,13 @@ function renderCart() {
                 <div class="item-icon">${item.icon}</div>
                 <div class="item-details">
                     <h4>${item.name}</h4>
-                    <span>SKU: ${item.sku}</span>
+                    <span>SKU: ${item.sku} | Unit Price: ${formatCurrency(item.price)}/${item.unit}</span>
                 </div>
             </div>
             <div class="item-qty-price">
                 <div class="qty-counter">
                     <button class="qty-btn" onclick="updateQty('${item.id}', -1)">-</button>
-                    <span class="qty-val">${item.qty}</span>
+                    <span class="qty-val">${item.qty} ${item.unit}</span>
                     <button class="qty-btn" onclick="updateQty('${item.id}', 1)">+</button>
                 </div>
                 <span class="item-total-price">${formatCurrency(itemTotal)}</span>
@@ -790,7 +790,7 @@ document.getElementById('btn-checkout').onclick = async () => {
         const rowTotal = item.price * item.qty;
         itemsRows += `
             <div class="r-line">
-                <span>${item.qty}x ${item.name.substring(0, 16)}</span>
+                <span>${item.qty} ${item.unit} ${item.name.substring(0, 16)}</span>
                 <span>${formatCurrency(rowTotal)}</span>
             </div>
         `;
@@ -881,7 +881,7 @@ function renderTransactions(transactions) {
         
         // Create tags for products
         const productsHtml = tx.items.map(item => 
-            `<span class="history-product-tag">${item.qty}x ${item.name}</span>`
+            `<span class="history-product-tag">${item.qty} ${item.unit} ${item.name}</span>`
         ).join('');
         
         itemEl.innerHTML = `
