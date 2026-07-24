@@ -215,7 +215,7 @@ def test_add_product_and_bulk_updates():
         "cost_price": 50.0,
         "stock": 100.0,
         "unit": "kg",
-        "category": "Produce",
+        "category": "Vegetables",
         "sku": "4011-TOM",
         "color": "#FF3B30",
         "icon": "🍅",
@@ -230,6 +230,14 @@ def test_add_product_and_bulk_updates():
     assert fetched["name"] == "Roma Tomato", f"Expected 'Roma Tomato', got {fetched['name']}"
     assert fetched["price"] == 80.0, f"Expected 80.0 price, got {fetched['price']}"
     assert fetched["stock"] == 100.0, f"Expected 100.0 stock, got {fetched['stock']}"
+    assert fetched["category"] == "Vegetables", f"Expected category 'Vegetables', got {fetched['category']}"
+
+    # Verify migration of apple and broccoli
+    apple_fetched = get_item_by_id("apple")
+    assert apple_fetched["category"] == "Fruits", f"Expected apple category 'Fruits', got {apple_fetched['category']}"
+    
+    broccoli_fetched = get_item_by_id("broccoli")
+    assert broccoli_fetched["category"] == "Vegetables", f"Expected broccoli category 'Vegetables', got {broccoli_fetched['category']}"
     
     # 2. Test bulk update
     updates = [

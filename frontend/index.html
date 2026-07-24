@@ -335,10 +335,11 @@
                                 <div class="form-group">
                                     <label class="form-label" for="prod-category">Category</label>
                                     <select id="prod-category" class="form-input form-select" required>
-                                        <option value="Produce">Produce (Fruits & Veggies)</option>
+                                        <option value="Fruits">Fruits</option>
+                                        <option value="Vegetables">Vegetables</option>
+                                        <option value="Dairy">Dairy</option>
                                         <option value="Beverage">Beverage</option>
                                         <option value="Deli">Deli</option>
-                                        <option value="Dairy">Dairy</option>
                                         <option value="Bakery">Bakery</option>
                                         <option value="Pantry">Pantry</option>
                                     </select>
@@ -365,33 +366,71 @@
                         </div>
                     </div>
 
-                    <!-- Daily Fruits & Vegetables Updater Section -->
+                    <!-- Daily Dairy, Vegetables & Fruits Updater Section -->
                     <div class="glass-card produce-updates-card" style="margin-bottom: 24px;">
                         <div class="card-header">
-                            <h2>🍎 Daily Produce Update (Fruits & Vegetables)</h2>
-                            <span class="badge badge-accent" style="background: rgba(233, 30, 99, 0.15); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid rgba(233, 30, 99, 0.25);">Perishable Log</span>
+                            <h2>📅 Daily Stock & Price updates</h2>
+                            <span class="badge badge-accent" style="background: rgba(233, 30, 99, 0.15); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid rgba(233, 30, 99, 0.25);">Daily Log</span>
                         </div>
                         <div class="card-body" style="margin-top: 16px;">
-                            <div class="admin-tip-bar" style="margin-bottom: 16px;">
+                            <div class="admin-tip-bar" style="margin-bottom: 20px;">
                                 <span class="tip-icon">🥬</span>
-                                <span class="tip-text">Update stock and price details for all fruits and vegetables. Queue your updates below and save them in one click.</span>
+                                <span class="tip-text">Update stock and price details for Dairy, Vegetables, and Fruits. Queue your updates below and save them in one click.</span>
                             </div>
-                            <div class="produce-update-container">
-                                <div class="produce-header-row">
-                                    <span>Product</span>
-                                    <span>Daily Cost Price</span>
-                                    <span>Daily Selling Price</span>
-                                    <span>Daily Stock</span>
+                            
+                            <!-- Dairy Sub-Section -->
+                            <div class="produce-group-section" style="margin-bottom: 24px;">
+                                <h3 style="font-size: 14px; color: var(--secondary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">🥛 Daily Dairy</h3>
+                                <div class="produce-update-container">
+                                    <div class="produce-header-row">
+                                        <span>Product</span>
+                                        <span>Daily Cost Price</span>
+                                        <span>Daily Selling Price</span>
+                                        <span>Daily Stock</span>
+                                    </div>
+                                    <div class="produce-update-list" id="dairy-update-list">
+                                        <!-- Dynamic dairy items loaded here -->
+                                    </div>
                                 </div>
-                                <div class="produce-update-list" id="produce-update-list">
-                                    <!-- Dynamic produce items loaded here -->
-                                </div>
-                                <div class="produce-save-actions" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
-                                    <button class="btn btn-secondary" id="btn-reset-produce-updates">Reset Fields</button>
-                                    <button class="btn btn-primary" id="btn-save-produce-updates">Save All Produce Updates</button>
-                                </div>
-                                <div id="produce-update-status" style="display: none; margin-top: 12px; padding: 10px; border-radius: var(--radius-sm); text-align: center; font-size: 13px;"></div>
                             </div>
+                            
+                            <!-- Vegetables Sub-Section -->
+                            <div class="produce-group-section" style="margin-bottom: 24px;">
+                                <h3 style="font-size: 14px; color: #00E676; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">🥦 Daily Vegetables</h3>
+                                <div class="produce-update-container">
+                                    <div class="produce-header-row">
+                                        <span>Product</span>
+                                        <span>Daily Cost Price</span>
+                                        <span>Daily Selling Price</span>
+                                        <span>Daily Stock</span>
+                                    </div>
+                                    <div class="produce-update-list" id="vegetables-update-list">
+                                        <!-- Dynamic vegetables items loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Fruits Sub-Section -->
+                            <div class="produce-group-section" style="margin-bottom: 24px;">
+                                <h3 style="font-size: 14px; color: #FF9500; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">🍎 Daily Fruits</h3>
+                                <div class="produce-update-container">
+                                    <div class="produce-header-row">
+                                        <span>Product</span>
+                                        <span>Daily Cost Price</span>
+                                        <span>Daily Selling Price</span>
+                                        <span>Daily Stock</span>
+                                    </div>
+                                    <div class="produce-update-list" id="fruits-update-list">
+                                        <!-- Dynamic fruits items loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="produce-save-actions" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                                <button class="btn btn-secondary" id="btn-reset-produce-updates">Reset Fields</button>
+                                <button class="btn btn-primary" id="btn-save-produce-updates">Save All Daily Updates</button>
+                            </div>
+                            <div id="produce-update-status" style="display: none; margin-top: 12px; padding: 10px; border-radius: var(--radius-sm); text-align: center; font-size: 13px;"></div>
                         </div>
                     </div>
 

@@ -957,58 +957,46 @@ async function fetchFinancialSummary() {
 
 function renderAdminCatalog(items) {
     const listEl = document.getElementById('admin-items-list');
-    const produceListEl = document.getElementById('produce-update-list');
+    const dairyListEl = document.getElementById('dairy-update-list');
+    const vegetablesListEl = document.getElementById('vegetables-update-list');
+    const fruitsListEl = document.getElementById('fruits-update-list');
     
     listEl.innerHTML = '';
-    produceListEl.innerHTML = '';
+    dairyListEl.innerHTML = '';
+    vegetablesListEl.innerHTML = '';
+    fruitsListEl.innerHTML = '';
     
     if (!items || items.length === 0) {
         listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No products found in database.</div>';
-        produceListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No fruits or vegetables found.</div>';
+        dairyListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No dairy items found.</div>';
+        vegetablesListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No vegetable items found.</div>';
+        fruitsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No fruit items found.</div>';
         return;
     }
     
-    let nonProduceCount = 0;
-    let produceCount = 0;
+    let nonDailyCount = 0;
+    let dairyCount = 0;
+    let vegetablesCount = 0;
+    let fruitsCount = 0;
     
     items.forEach(item => {
         const isLow = item.stock < 15.0;
         const stockText = isLow ? `Low Stock (${item.stock} ${item.unit})` : `In Stock (${item.stock} ${item.unit})`;
         const stockClass = isLow ? 'low-stock' : 'in-stock';
         
-        // Match Produce, Fruits, Vegetables category
-        if (item.category && (item.category.toLowerCase() === 'produce' || item.category.toLowerCase() === 'fruits' || item.category.toLowerCase() === 'vegetables')) {
-            produceCount++;
-            const row = document.createElement('div');
-            row.className = 'produce-update-row';
-            row.setAttribute('data-id', item.id);
-            row.innerHTML = `
-                <div class="produce-info-cell">
-                    <div class="produce-icon-badge">${item.icon}</div>
-                    <div class="produce-text-details">
-                        <span class="produce-name-label">${item.name}</span>
-                        <span class="produce-category-sublabel">SKU: ${item.sku} | Unit: ${item.unit}</span>
-                    </div>
-                </div>
-                <div class="produce-input-cell">
-                    <input type="number" class="produce-cost-field" step="0.01" min="0" value="${(item.cost_price || 0).toFixed(2)}">
-                </div>
-                <div class="produce-input-cell">
-                    <input type="number" class="produce-price-field" step="0.01" min="0" value="${item.price.toFixed(2)}">
-                </div>
-                <div class="produce-input-cell">
-                    <div class="produce-input-with-controls">
-                        <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', -10)">-10</button>
-                        <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', -5)">-5</button>
-                        <input type="number" class="produce-stock-field" id="produce-stock-${item.id}" step="0.1" min="0" value="${item.stock}">
-                        <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', 5)">+5</button>
-                        <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', 10)">+10</button>
-                    </div>
-                </div>
-            `;
-            produceListEl.appendChild(row);
+        const categoryLower = item.category ? item.category.toLowerCase() : '';
+        
+        if (categoryLower === 'dairy') {
+            dairyCount++;
+            dairyListEl.appendChild(createProduceRow(item));
+        } else if (categoryLower === 'vegetables') {
+            vegetablesCount++;
+            vegetablesListEl.appendChild(createProduceRow(item));
+        } else if (categoryLower === 'fruits' || categoryLower === 'produce') {
+            fruitsCount++;
+            fruitsListEl.appendChild(createProduceRow(item));
         } else {
-            nonProduceCount++;
+            nonDailyCount++;
             const row = document.createElement('div');
             row.className = 'admin-product-row';
             row.innerHTML = `
@@ -1048,12 +1036,49 @@ function renderAdminCatalog(items) {
         }
     });
     
-    if (nonProduceCount === 0) {
+    if (nonDailyCount === 0) {
         listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No other products found in database.</div>';
     }
-    if (produceCount === 0) {
-        produceListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No fruits or vegetables found.</div>';
+    if (dairyCount === 0) {
+        dairyListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No dairy items found.</div>';
     }
+    if (vegetablesCount === 0) {
+        vegetablesListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No vegetable items found.</div>';
+    }
+    if (fruitsCount === 0) {
+        fruitsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No fruit items found.</div>';
+    }
+}
+
+function createProduceRow(item) {
+    const row = document.createElement('div');
+    row.className = 'produce-update-row';
+    row.setAttribute('data-id', item.id);
+    row.innerHTML = `
+        <div class="produce-info-cell">
+            <div class="produce-icon-badge">${item.icon}</div>
+            <div class="produce-text-details">
+                <span class="produce-name-label">${item.name}</span>
+                <span class="produce-category-sublabel">SKU: ${item.sku} | Unit: ${item.unit}</span>
+            </div>
+        </div>
+        <div class="produce-input-cell">
+            <input type="number" class="produce-cost-field" step="0.01" min="0" value="${(item.cost_price || 0).toFixed(2)}">
+        </div>
+        <div class="produce-input-cell">
+            <input type="number" class="produce-price-field" step="0.01" min="0" value="${item.price.toFixed(2)}">
+        </div>
+        <div class="produce-input-cell">
+            <div class="produce-input-with-controls">
+                <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', -10)">-10</button>
+                <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', -5)">-5</button>
+                <input type="number" class="produce-stock-field" id="produce-stock-${item.id}" step="0.1" min="0" value="${item.stock}">
+                <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', 5)">+5</button>
+                <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', 10)">+10</button>
+            </div>
+        </div>
+    `;
+    return row;
 }
 
 function adjustProduceQty(id, amount) {
@@ -1070,15 +1095,19 @@ window.adjustProduceQty = adjustProduceQty;
 async function saveAllProduceUpdates() {
     const btn = document.getElementById('btn-save-produce-updates');
     const statusEl = document.getElementById('produce-update-status');
-    const listEl = document.getElementById('produce-update-list');
-    const rows = listEl.querySelectorAll('.produce-update-row');
     
-    if (rows.length === 0) return;
+    // Select from all three daily update sub-sections
+    const dairyRows = document.querySelectorAll('#dairy-update-list .produce-update-row');
+    const vegRows = document.querySelectorAll('#vegetables-update-list .produce-update-row');
+    const fruitRows = document.querySelectorAll('#fruits-update-list .produce-update-row');
+    
+    const allRows = [...dairyRows, ...vegRows, ...fruitRows];
+    if (allRows.length === 0) return;
     
     const updates = [];
     let valid = true;
     
-    rows.forEach(row => {
+    allRows.forEach(row => {
         const id = row.getAttribute('data-id');
         const costVal = parseFloat(row.querySelector('.produce-cost-field').value);
         const priceVal = parseFloat(row.querySelector('.produce-price-field').value);
@@ -1119,7 +1148,7 @@ async function saveAllProduceUpdates() {
         playBeep(880, 0.05);
         setTimeout(() => playBeep(1200, 0.08), 60);
         
-        statusEl.textContent = "✓ All Fruits & Vegetables updated successfully!";
+        statusEl.textContent = "✓ Daily inventory categories updated successfully!";
         statusEl.style.display = 'block';
         statusEl.style.background = "rgba(0, 230, 118, 0.15)";
         statusEl.style.color = "var(--primary)";
@@ -1129,19 +1158,19 @@ async function saveAllProduceUpdates() {
         setTimeout(async () => {
             statusEl.style.display = 'none';
             btn.disabled = false;
-            btn.textContent = "Save All Produce Updates";
+            btn.textContent = "Save All Daily Updates";
             await fetchItems();
             fetchAdminCatalog();
         }, 1500);
     } catch (error) {
-        console.error("Error bulk updating produce:", error);
+        console.error("Error bulk updating daily categories:", error);
         statusEl.textContent = "✗ Failed to save updates. Please try again.";
         statusEl.style.display = 'block';
         statusEl.style.background = "rgba(255, 59, 48, 0.15)";
         statusEl.style.color = "var(--accent)";
         statusEl.style.border = "1px solid rgba(255, 59, 48, 0.25)";
         btn.disabled = false;
-        btn.textContent = "Save All Produce Updates";
+        btn.textContent = "Save All Daily Updates";
     }
 }
 window.saveAllProduceUpdates = saveAllProduceUpdates;

@@ -14,7 +14,7 @@ GROCERY_ITEMS = {
         "cost_price": 130.00,
         "stock": 100.0,
         "unit": "kg",
-        "category": "Produce",
+        "category": "Fruits",
         "sku": "4011-APP",
         "color": "#FF3B30",
         "icon": "🍎",
@@ -27,7 +27,7 @@ GROCERY_ITEMS = {
         "cost_price": 40.00,
         "stock": 150.0,
         "unit": "kg",
-        "category": "Produce",
+        "category": "Fruits",
         "sku": "4011-BAN",
         "color": "#FFCC00",
         "icon": "🍌",
@@ -40,7 +40,7 @@ GROCERY_ITEMS = {
         "cost_price": 85.00,
         "stock": 120.0,
         "unit": "kg",
-        "category": "Produce",
+        "category": "Fruits",
         "sku": "3107-ORN",
         "color": "#FF9500",
         "icon": "🍊",
@@ -53,7 +53,7 @@ GROCERY_ITEMS = {
         "cost_price": 100.00,
         "stock": 80.0,
         "unit": "kg",
-        "category": "Produce",
+        "category": "Vegetables",
         "sku": "4060-BRC",
         "color": "#34C759",
         "icon": "🥦",
@@ -66,7 +66,7 @@ GROCERY_ITEMS = {
         "cost_price": 35.00,
         "stock": 200.0,
         "unit": "kg",
-        "category": "Produce",
+        "category": "Vegetables",
         "sku": "4094-CRT",
         "color": "#FF9500",
         "icon": "🥕",
@@ -287,6 +287,11 @@ def init_db():
     if "cost_price" not in item_columns:
         cursor.execute("ALTER TABLE transaction_items ADD COLUMN cost_price REAL NOT NULL DEFAULT 0.0")
     
+    # 3b. Run migrations to update old Produce categories to specific Fruits and Vegetables
+    cursor.execute("UPDATE products SET category = 'Fruits' WHERE id IN ('apple', 'banana', 'orange') AND category = 'Produce'")
+    cursor.execute("UPDATE products SET category = 'Vegetables' WHERE id IN ('broccoli', 'carrot') AND category = 'Produce'")
+    conn.commit()
+
     # 4. Check if products table is empty; if so, populate it with default values
     cursor.execute("SELECT COUNT(*) FROM products")
     count = cursor.fetchone()[0]
