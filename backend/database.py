@@ -223,6 +223,13 @@ def init_db():
                         "coco_class": item.get("coco_class")
                     })
                 supabase.table("products").insert(payload).execute()
+            else:
+                # Run migration to update old Produce category items to specific Fruits/Vegetables in Supabase
+                try:
+                    supabase.table("products").update({"category": "Fruits"}).in_("id", ["apple", "banana", "orange"]).eq("category", "Produce").execute()
+                    supabase.table("products").update({"category": "Vegetables"}).in_("id", ["broccoli", "carrot"]).eq("category", "Produce").execute()
+                except Exception as e:
+                    print(f"WARNING: database: Supabase category update migration failed: {e}")
         except Exception as e:
             print(f"WARNING: database: Supabase init table populating failed/skipped: {e}")
         return

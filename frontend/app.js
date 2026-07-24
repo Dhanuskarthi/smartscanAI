@@ -985,14 +985,15 @@ function renderAdminCatalog(items) {
         const stockClass = isLow ? 'low-stock' : 'in-stock';
         
         const categoryLower = item.category ? item.category.toLowerCase() : '';
+        const idLower = item.id ? item.id.toLowerCase() : '';
         
-        if (categoryLower === 'dairy') {
+        if (categoryLower === 'dairy' || idLower === 'milk') {
             dairyCount++;
             dairyListEl.appendChild(createProduceRow(item));
-        } else if (categoryLower === 'vegetables') {
+        } else if (categoryLower === 'vegetables' || idLower === 'broccoli' || idLower === 'carrot') {
             vegetablesCount++;
             vegetablesListEl.appendChild(createProduceRow(item));
-        } else if (categoryLower === 'fruits' || categoryLower === 'produce') {
+        } else if (categoryLower === 'fruits' || categoryLower === 'produce' || idLower === 'apple' || idLower === 'banana' || idLower === 'orange') {
             fruitsCount++;
             fruitsListEl.appendChild(createProduceRow(item));
         } else {
