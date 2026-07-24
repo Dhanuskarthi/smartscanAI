@@ -957,56 +957,286 @@ async function fetchFinancialSummary() {
 
 function renderAdminCatalog(items) {
     const listEl = document.getElementById('admin-items-list');
+    const produceListEl = document.getElementById('produce-update-list');
+    
     listEl.innerHTML = '';
+    produceListEl.innerHTML = '';
     
     if (!items || items.length === 0) {
         listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No products found in database.</div>';
+        produceListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No fruits or vegetables found.</div>';
         return;
     }
+    
+    let nonProduceCount = 0;
+    let produceCount = 0;
     
     items.forEach(item => {
         const isLow = item.stock < 15.0;
         const stockText = isLow ? `Low Stock (${item.stock} ${item.unit})` : `In Stock (${item.stock} ${item.unit})`;
         const stockClass = isLow ? 'low-stock' : 'in-stock';
         
-        const row = document.createElement('div');
-        row.className = 'admin-product-row';
-        row.innerHTML = `
-            <div class="admin-product-info">
-                <div class="admin-product-icon">${item.icon}</div>
-                <div class="admin-product-details">
-                    <h4>${item.name}</h4>
-                    <span>SKU: ${item.sku} | Unit: ${item.unit} | Category: ${item.category}</span>
-                    <div class="admin-product-meta">
-                        <span class="stock-tag ${stockClass}">${stockText}</span>
+        // Match Produce, Fruits, Vegetables category
+        if (item.category && (item.category.toLowerCase() === 'produce' || item.category.toLowerCase() === 'fruits' || item.category.toLowerCase() === 'vegetables')) {
+            produceCount++;
+            const row = document.createElement('div');
+            row.className = 'produce-update-row';
+            row.setAttribute('data-id', item.id);
+            row.innerHTML = `
+                <div class="produce-info-cell">
+                    <div class="produce-icon-badge">${item.icon}</div>
+                    <div class="produce-text-details">
+                        <span class="produce-name-label">${item.name}</span>
+                        <span class="produce-category-sublabel">SKU: ${item.sku} | Unit: ${item.unit}</span>
                     </div>
                 </div>
-            </div>
-            <div class="admin-price-update-form" data-id="${item.id}">
-                <div class="admin-input-group">
-                    <span class="admin-input-label">Cost</span>
-                    <div class="admin-price-input-wrapper">
-                        <span class="admin-currency-prefix">₹</span>
-                        <input type="number" class="admin-price-input admin-cost-input-field" step="0.01" min="0" value="${(item.cost_price || 0).toFixed(2)}">
+                <div class="produce-input-cell">
+                    <input type="number" class="produce-cost-field" step="0.01" min="0" value="${(item.cost_price || 0).toFixed(2)}">
+                </div>
+                <div class="produce-input-cell">
+                    <input type="number" class="produce-price-field" step="0.01" min="0" value="${item.price.toFixed(2)}">
+                </div>
+                <div class="produce-input-cell">
+                    <div class="produce-input-with-controls">
+                        <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', -10)">-10</button>
+                        <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', -5)">-5</button>
+                        <input type="number" class="produce-stock-field" id="produce-stock-${item.id}" step="0.1" min="0" value="${item.stock}">
+                        <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', 5)">+5</button>
+                        <button class="produce-qty-btn" onclick="adjustProduceQty('${item.id}', 10)">+10</button>
                     </div>
                 </div>
-                <div class="admin-input-group">
-                    <span class="admin-input-label">Price</span>
-                    <div class="admin-price-input-wrapper">
-                        <span class="admin-currency-prefix">₹</span>
-                        <input type="number" class="admin-price-input admin-selling-input-field" step="0.01" min="0" value="${item.price.toFixed(2)}">
+            `;
+            produceListEl.appendChild(row);
+        } else {
+            nonProduceCount++;
+            const row = document.createElement('div');
+            row.className = 'admin-product-row';
+            row.innerHTML = `
+                <div class="admin-product-info">
+                    <div class="admin-product-icon">${item.icon}</div>
+                    <div class="admin-product-details">
+                        <h4>${item.name}</h4>
+                        <span>SKU: ${item.sku} | Unit: ${item.unit} | Category: ${item.category}</span>
+                        <div class="admin-product-meta">
+                            <span class="stock-tag ${stockClass}">${stockText}</span>
+                        </div>
                     </div>
                 </div>
-                <div class="admin-input-group">
-                    <span class="admin-input-label">Stock (${item.unit})</span>
-                    <input type="number" class="admin-stock-input admin-stock-input-field" step="0.1" min="0" value="${item.stock}">
+                <div class="admin-price-update-form" data-id="${item.id}">
+                    <div class="admin-input-group">
+                        <span class="admin-input-label">Cost</span>
+                        <div class="admin-price-input-wrapper">
+                            <span class="admin-currency-prefix">₹</span>
+                            <input type="number" class="admin-price-input admin-cost-input-field" step="0.01" min="0" value="${(item.cost_price || 0).toFixed(2)}">
+                        </div>
+                    </div>
+                    <div class="admin-input-group">
+                        <span class="admin-input-label">Price</span>
+                        <div class="admin-price-input-wrapper">
+                            <span class="admin-currency-prefix">₹</span>
+                            <input type="number" class="admin-price-input admin-selling-input-field" step="0.01" min="0" value="${item.price.toFixed(2)}">
+                        </div>
+                    </div>
+                    <div class="admin-input-group">
+                        <span class="admin-input-label">Stock (${item.unit})</span>
+                        <input type="number" class="admin-stock-input admin-stock-input-field" step="0.1" min="0" value="${item.stock}">
+                    </div>
+                    <button class="btn btn-primary admin-save-btn" onclick="saveProductDetails('${item.id}', this)">Save</button>
                 </div>
-                <button class="btn btn-primary admin-save-btn" onclick="saveProductDetails('${item.id}', this)">Save</button>
-            </div>
-        `;
-        listEl.appendChild(row);
+            `;
+            listEl.appendChild(row);
+        }
     });
+    
+    if (nonProduceCount === 0) {
+        listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No other products found in database.</div>';
+    }
+    if (produceCount === 0) {
+        produceListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No fruits or vegetables found.</div>';
+    }
 }
+
+function adjustProduceQty(id, amount) {
+    const input = document.getElementById(`produce-stock-${id}`);
+    if (input) {
+        let val = parseFloat(input.value) || 0;
+        val += amount;
+        if (val < 0) val = 0;
+        input.value = val.toFixed(1);
+    }
+}
+window.adjustProduceQty = adjustProduceQty;
+
+async function saveAllProduceUpdates() {
+    const btn = document.getElementById('btn-save-produce-updates');
+    const statusEl = document.getElementById('produce-update-status');
+    const listEl = document.getElementById('produce-update-list');
+    const rows = listEl.querySelectorAll('.produce-update-row');
+    
+    if (rows.length === 0) return;
+    
+    const updates = [];
+    let valid = true;
+    
+    rows.forEach(row => {
+        const id = row.getAttribute('data-id');
+        const costVal = parseFloat(row.querySelector('.produce-cost-field').value);
+        const priceVal = parseFloat(row.querySelector('.produce-price-field').value);
+        const stockVal = parseFloat(row.querySelector('.produce-stock-field').value);
+        
+        if (isNaN(costVal) || costVal < 0 || isNaN(priceVal) || priceVal < 0 || isNaN(stockVal) || stockVal < 0) {
+            valid = false;
+        } else {
+            updates.push({
+                id: id,
+                cost_price: costVal,
+                price: priceVal,
+                stock: stockVal
+            });
+        }
+    });
+    
+    if (!valid) {
+        alert("Please make sure all daily cost, price, and stock levels are valid positive numbers.");
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.textContent = "Saving updates...";
+    statusEl.style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/admin/bulk-update-products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ updates: updates })
+        });
+        
+        if (!response.ok) {
+            throw new Error("Bulk update API failed");
+        }
+        
+        playBeep(880, 0.05);
+        setTimeout(() => playBeep(1200, 0.08), 60);
+        
+        statusEl.textContent = "✓ All Fruits & Vegetables updated successfully!";
+        statusEl.style.display = 'block';
+        statusEl.style.background = "rgba(0, 230, 118, 0.15)";
+        statusEl.style.color = "var(--primary)";
+        statusEl.style.border = "1px solid rgba(0, 230, 118, 0.25)";
+        
+        // Refresh local cache and list after short delay
+        setTimeout(async () => {
+            statusEl.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = "Save All Produce Updates";
+            await fetchItems();
+            fetchAdminCatalog();
+        }, 1500);
+    } catch (error) {
+        console.error("Error bulk updating produce:", error);
+        statusEl.textContent = "✗ Failed to save updates. Please try again.";
+        statusEl.style.display = 'block';
+        statusEl.style.background = "rgba(255, 59, 48, 0.15)";
+        statusEl.style.color = "var(--accent)";
+        statusEl.style.border = "1px solid rgba(255, 59, 48, 0.25)";
+        btn.disabled = false;
+        btn.textContent = "Save All Produce Updates";
+    }
+}
+window.saveAllProduceUpdates = saveAllProduceUpdates;
+
+async function handleAddProduct(event) {
+    event.preventDefault();
+    const idEl = document.getElementById('prod-id');
+    const nameEl = document.getElementById('prod-name');
+    const costEl = document.getElementById('prod-cost');
+    const priceEl = document.getElementById('prod-price');
+    const stockEl = document.getElementById('prod-stock');
+    const unitEl = document.getElementById('prod-unit');
+    const categoryEl = document.getElementById('prod-category');
+    const skuEl = document.getElementById('prod-sku');
+    const iconEl = document.getElementById('prod-icon');
+    const colorEl = document.getElementById('prod-color');
+    const statusEl = document.getElementById('add-product-status');
+    const submitBtn = document.getElementById('btn-add-product-submit');
+    
+    statusEl.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Adding Product...';
+    
+    const id = idEl.value.trim().toLowerCase();
+    const name = nameEl.value.trim();
+    const cost = parseFloat(costEl.value);
+    const price = parseFloat(priceEl.value);
+    const stock = parseFloat(stockEl.value);
+    const unit = unitEl.value;
+    const category = categoryEl.value;
+    const sku = skuEl.value.trim();
+    const icon = iconEl.value.trim();
+    const color = colorEl.value;
+    
+    if (!id || !name || isNaN(cost) || isNaN(price) || isNaN(stock) || !sku || !icon) {
+        statusEl.textContent = 'Please fill out all fields correctly.';
+        statusEl.style.display = 'block';
+        statusEl.style.background = 'rgba(255, 59, 48, 0.15)';
+        statusEl.style.color = 'var(--accent)';
+        statusEl.style.border = '1px solid rgba(255, 59, 48, 0.25)';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add Product to Inventory';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/add-product', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, name, price, cost_price: cost, stock, unit, category, sku, color, icon })
+        });
+        
+        if (!response.ok) {
+            let errorMsg = 'Failed to create product';
+            try {
+                const errData = await response.json();
+                errorMsg = errData.detail || errorMsg;
+            } catch (e) {}
+            throw new Error(errorMsg);
+        }
+        
+        playBeep(880, 0.05);
+        setTimeout(() => playBeep(1200, 0.08), 60);
+        
+        statusEl.textContent = `✓ Product "${name}" added successfully!`;
+        statusEl.style.display = 'block';
+        statusEl.style.background = "rgba(0, 230, 118, 0.15)";
+        statusEl.style.color = "var(--primary)";
+        statusEl.style.border = "1px solid rgba(0, 230, 118, 0.25)";
+        
+        // Reset form
+        document.getElementById('add-product-form').reset();
+        colorEl.value = '#FF3B30'; // default color
+        
+        // Refresh catalog and lists
+        await fetchItems();
+        fetchAdminCatalog();
+        
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+        }, 3000);
+        
+    } catch (error) {
+        console.error("Error adding product:", error);
+        statusEl.textContent = `✗ Error: ${error.message}`;
+        statusEl.style.display = 'block';
+        statusEl.style.background = 'rgba(255, 59, 48, 0.15)';
+        statusEl.style.color = 'var(--accent)';
+        statusEl.style.border = '1px solid rgba(255, 59, 48, 0.25)';
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add Product to Inventory';
+    }
+}
+window.handleAddProduct = handleAddProduct;
 
 async function saveProductDetails(id, buttonEl) {
     const rowEl = buttonEl.closest('.admin-price-update-form');
@@ -1086,6 +1316,7 @@ function checkAuth() {
     const name = localStorage.getItem('user_name');
     
     const overlay = document.getElementById('login-overlay');
+    const appContainer = document.querySelector('.app-container');
     const userBadge = document.getElementById('user-badge');
     const roleNameEl = document.getElementById('user-role-name');
     
@@ -1094,6 +1325,7 @@ function checkAuth() {
     
     if (role && name) {
         overlay.classList.remove('active');
+        if (appContainer) appContainer.style.display = '';
         userBadge.style.display = 'flex';
         roleNameEl.textContent = `${name} (${role})`;
         
@@ -1102,8 +1334,10 @@ function checkAuth() {
         } else {
             if (adminTabBtn) adminTabBtn.style.display = 'none';
         }
+        return true;
     } else {
         overlay.classList.add('active');
+        if (appContainer) appContainer.style.display = 'none';
         userBadge.style.display = 'none';
         if (adminTabBtn) adminTabBtn.style.display = 'none';
         
@@ -1111,6 +1345,7 @@ function checkAuth() {
         if (activeTab === 'admin') {
             switchTab('cart');
         }
+        return false;
     }
 }
 
@@ -1134,6 +1369,13 @@ function switchTab(tabId) {
     activeTab = tabId;
 }
 
+function fillCreds(username, password) {
+    document.getElementById('login-username').value = username;
+    document.getElementById('login-password').value = password;
+    document.getElementById('login-error-msg').style.display = 'none';
+}
+window.fillCreds = fillCreds;
+
 async function handleLogin(event) {
     event.preventDefault();
     const usernameEl = document.getElementById('login-username');
@@ -1145,16 +1387,23 @@ async function handleLogin(event) {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Verifying...';
     
+    const username = usernameEl.value ? usernameEl.value.trim() : '';
+    const password = passwordEl.value ? passwordEl.value.trim() : '';
+    
     try {
         const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: usernameEl.value, password: passwordEl.value })
+            body: JSON.stringify({ username, password })
         });
         
         if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.detail || 'Login failed');
+            let errorMsg = 'Invalid username or password';
+            try {
+                const errData = await response.json();
+                errorMsg = errData.detail || errorMsg;
+            } catch (e) {}
+            throw new Error(errorMsg);
         }
         
         const data = await response.json();
@@ -1166,11 +1415,8 @@ async function handleLogin(event) {
         
         usernameEl.value = '';
         passwordEl.value = '';
-        checkAuth();
-        
-        // Refresh catalog if admin
-        if (data.role === 'admin') {
-            fetchAdminCatalog();
+        if (checkAuth()) {
+            await initApp();
         }
     } catch (error) {
         console.error("Login failure:", error);
@@ -1187,19 +1433,46 @@ function handleLogout() {
     playBeep(440, 0.1);
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_name');
-    checkAuth();
+    location.reload();
 }
 
-// Attach event listeners for login & logout
-document.getElementById('login-form').onsubmit = handleLogin;
-document.getElementById('btn-logout').onclick = handleLogout;
-
-// Initialize
-window.onload = async () => {
+let appInitialized = false;
+async function initApp() {
+    if (appInitialized) return;
+    appInitialized = true;
+    
     await fetchItems();
     initWebcam();
     initSimulation();
     initOCRMode();
-    fetchTransactions(); // Initial quiet load of history
-    checkAuth();         // Verify login state
+    fetchTransactions();
+}
+
+// Attach event listeners
+document.getElementById('login-form').onsubmit = handleLogin;
+document.getElementById('btn-logout').onclick = handleLogout;
+
+const addProductForm = document.getElementById('add-product-form');
+if (addProductForm) {
+    addProductForm.onsubmit = handleAddProduct;
+}
+
+const saveProduceBtn = document.getElementById('btn-save-produce-updates');
+if (saveProduceBtn) {
+    saveProduceBtn.onclick = saveAllProduceUpdates;
+}
+
+const resetProduceBtn = document.getElementById('btn-reset-produce-updates');
+if (resetProduceBtn) {
+    resetProduceBtn.onclick = () => {
+        playBeep(440, 0.05);
+        fetchAdminCatalog();
+    };
+}
+
+// Initialize
+window.onload = async () => {
+    if (checkAuth()) {
+        await initApp();
+    }
 };

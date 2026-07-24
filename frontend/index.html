@@ -14,7 +14,7 @@
 <body>
     <div class="glow-bg"></div>
     
-    <div class="app-container">
+    <div class="app-container" style="display: none;">
         <!-- Header -->
         <header class="app-header">
             <div class="header-logo">
@@ -267,40 +267,143 @@
 
                 <!-- Tab content: Admin Panel -->
                 <div class="tab-content" id="tab-admin">
-                    <div class="glass-card admin-card">
+                    <!-- Supermarket P&L / Stock Dashboard -->
+                    <div class="glass-card admin-dashboard-card" style="margin-bottom: 24px;">
                         <div class="card-header">
-                            <h2>Admin Product Management</h2>
+                            <h2>Supermarket P&L / Stock Dashboard</h2>
                             <button class="btn btn-secondary btn-sm" id="btn-refresh-admin">Refresh Catalog</button>
                         </div>
-                        <div class="admin-list-wrapper">
-                            <!-- Supermarket P&L / Stock Dashboard -->
-                            <div class="admin-dashboard" id="admin-dashboard">
-                                <div class="dashboard-card profit-card">
-                                    <div class="db-card-icon">📈</div>
-                                    <div class="db-card-info">
-                                        <span class="db-card-label">Total Revenue</span>
-                                        <h3 id="db-revenue">₹0.00</h3>
-                                    </div>
-                                </div>
-                                <div class="dashboard-card profit-card">
-                                    <div class="db-card-icon">💰</div>
-                                    <div class="db-card-info">
-                                        <span class="db-card-label">Net Profit</span>
-                                        <h3 id="db-profit">₹0.00</h3>
-                                    </div>
-                                </div>
-                                <div class="dashboard-card alert-card">
-                                    <div class="db-card-icon">⚠️</div>
-                                    <div class="db-card-info">
-                                        <span class="db-card-label">Low Stock Alerts</span>
-                                        <h3 id="db-low-stock">0</h3>
-                                    </div>
+                        <div class="admin-dashboard" id="admin-dashboard" style="margin-top: 16px;">
+                            <div class="dashboard-card profit-card">
+                                <div class="db-card-icon">📈</div>
+                                <div class="db-card-info">
+                                    <span class="db-card-label">Total Revenue</span>
+                                    <h3 id="db-revenue">₹0.00</h3>
                                 </div>
                             </div>
+                            <div class="dashboard-card profit-card">
+                                <div class="db-card-icon">💰</div>
+                                <div class="db-card-info">
+                                    <span class="db-card-label">Net Profit</span>
+                                    <h3 id="db-profit">₹0.00</h3>
+                                </div>
+                            </div>
+                            <div class="dashboard-card alert-card">
+                                <div class="db-card-icon">⚠️</div>
+                                <div class="db-card-info">
+                                    <span class="db-card-label">Low Stock Alerts</span>
+                                    <h3 id="db-low-stock">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
+                    <!-- Add New Product Form -->
+                    <div class="glass-card add-product-card" style="margin-bottom: 24px;">
+                        <div class="card-header">
+                            <h2>✨ Add New Product to Catalog</h2>
+                        </div>
+                        <div class="card-body" style="margin-top: 16px;">
+                            <form id="add-product-form" class="add-product-grid">
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-id">Product ID / Slug</label>
+                                    <input type="text" id="prod-id" class="form-input" placeholder="e.g. tomato" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-name">Product Name</label>
+                                    <input type="text" id="prod-name" class="form-input" placeholder="e.g. Roma Tomato" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-cost">Cost Price (₹)</label>
+                                    <input type="number" id="prod-cost" class="form-input" step="0.01" min="0" placeholder="0.00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-price">Selling Price (₹)</label>
+                                    <input type="number" id="prod-price" class="form-input" step="0.01" min="0" placeholder="0.00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-stock">Initial Stock</label>
+                                    <input type="number" id="prod-stock" class="form-input" step="0.1" min="0" placeholder="100" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-unit">Unit</label>
+                                    <select id="prod-unit" class="form-input form-select" required>
+                                        <option value="kg">Per kg</option>
+                                        <option value="item">Per Item / Piece</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-category">Category</label>
+                                    <select id="prod-category" class="form-input form-select" required>
+                                        <option value="Produce">Produce (Fruits & Veggies)</option>
+                                        <option value="Beverage">Beverage</option>
+                                        <option value="Deli">Deli</option>
+                                        <option value="Dairy">Dairy</option>
+                                        <option value="Bakery">Bakery</option>
+                                        <option value="Pantry">Pantry</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-sku">SKU Code</label>
+                                    <input type="text" id="prod-sku" class="form-input" placeholder="e.g. 4011-TOM" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-icon">Emoji Icon</label>
+                                    <input type="text" id="prod-icon" class="form-input" placeholder="e.g. 🍅" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="prod-color">Theme Color</label>
+                                    <div class="color-picker-wrapper">
+                                        <input type="color" id="prod-color" class="form-color-picker" value="#FF3B30">
+                                    </div>
+                                </div>
+                                <div class="form-actions" style="grid-column: span 2; margin-top: 12px;">
+                                    <button type="submit" class="btn btn-primary w-100" id="btn-add-product-submit">Add Product to Inventory</button>
+                                </div>
+                                <div class="add-product-status" id="add-product-status" style="display: none; grid-column: span 2; padding: 10px; border-radius: var(--radius-sm); text-align: center; font-size: 13px;"></div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Daily Fruits & Vegetables Updater Section -->
+                    <div class="glass-card produce-updates-card" style="margin-bottom: 24px;">
+                        <div class="card-header">
+                            <h2>🍎 Daily Produce Update (Fruits & Vegetables)</h2>
+                            <span class="badge badge-accent" style="background: rgba(233, 30, 99, 0.15); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid rgba(233, 30, 99, 0.25);">Perishable Log</span>
+                        </div>
+                        <div class="card-body" style="margin-top: 16px;">
+                            <div class="admin-tip-bar" style="margin-bottom: 16px;">
+                                <span class="tip-icon">🥬</span>
+                                <span class="tip-text">Update stock and price details for all fruits and vegetables. Queue your updates below and save them in one click.</span>
+                            </div>
+                            <div class="produce-update-container">
+                                <div class="produce-header-row">
+                                    <span>Product</span>
+                                    <span>Daily Cost Price</span>
+                                    <span>Daily Selling Price</span>
+                                    <span>Daily Stock</span>
+                                </div>
+                                <div class="produce-update-list" id="produce-update-list">
+                                    <!-- Dynamic produce items loaded here -->
+                                </div>
+                                <div class="produce-save-actions" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                                    <button class="btn btn-secondary" id="btn-reset-produce-updates">Reset Fields</button>
+                                    <button class="btn btn-primary" id="btn-save-produce-updates">Save All Produce Updates</button>
+                                </div>
+                                <div id="produce-update-status" style="display: none; margin-top: 12px; padding: 10px; border-radius: var(--radius-sm); text-align: center; font-size: 13px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- General Catalog Management -->
+                    <div class="glass-card admin-card">
+                        <div class="card-header">
+                            <h2>📋 All Products Catalog Management</h2>
+                        </div>
+                        <div class="admin-list-wrapper" style="margin-top: 16px;">
                             <div class="admin-tip-bar">
                                 <span class="tip-icon">⚙️</span>
-                                <span class="tip-text">Manage stock inventory, cost prices, and selling prices. Price/Stock changes apply immediately.</span>
+                                <span class="tip-text">Manage other catalog categories. Prices and stock adjustments are updated individually.</span>
                             </div>
                             <div class="admin-items-list" id="admin-items-list">
                                 <!-- Dynamic admin list items inject here -->
@@ -355,12 +458,12 @@
             </form>
             
             <div class="login-help-section">
-                <h4>Quick Help Credentials:</h4>
-                <div class="login-help-row">
+                <h4>Quick Help Credentials (click to fill):</h4>
+                <div class="login-help-row" style="cursor: pointer;" onclick="fillCreds('admin', 'admin123')">
                     <span class="help-role">Admin Access:</span>
                     <span class="help-creds">admin / admin123</span>
                 </div>
-                <div class="login-help-row">
+                <div class="login-help-row" style="cursor: pointer;" onclick="fillCreds('worker', 'worker123')">
                     <span class="help-role">Worker Billing:</span>
                     <span class="help-creds">worker / worker123</span>
                 </div>

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_details, get_financial_summary
+from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_details, get_financial_summary, add_product_to_db, bulk_update_products_details
 from backend.detector import GroceryDetector
 from backend.parser import parse_receipt_image
 
@@ -60,9 +60,31 @@ class UpdateProductRequest(BaseModel):
     cost_price: float
     stock: float
 
+class AddProductRequest(BaseModel):
+    id: str
+    name: str
+    price: float
+    cost_price: float
+    stock: float
+    unit: str
+    category: str
+    sku: str
+    color: str
+    icon: str
+
+class BulkUpdateItem(BaseModel):
+    id: str
+    price: float
+    cost_price: float
+    stock: float
+
+class BulkUpdateProductsRequest(BaseModel):
+    updates: list[BulkUpdateItem]
+
 class LoginRequest(BaseModel):
     username: str
     password: str
+
 
 @app.post("/api/auth/login")
 def login_auth(request: LoginRequest):
@@ -74,11 +96,14 @@ def login_auth(request: LoginRequest):
         "worker": {"password": "worker123", "role": "worker"}
     }
     
-    user = users.get(request.username.lower())
-    if not user or user["password"] != request.password:
+    username = request.username.strip().lower() if request.username else ""
+    password = request.password.strip() if request.password else ""
+    
+    user = users.get(username)
+    if not user or user["password"] != password:
         raise HTTPException(status_code=401, detail="Invalid username or password")
         
-    return {"success": True, "role": user["role"], "username": request.username}
+    return {"success": True, "role": user["role"], "username": username}
 
 @app.get("/api/items")
 def get_items():
@@ -103,6 +128,63 @@ def update_product(request: UpdateProductRequest):
     except Exception as e:
         logger.error(f"Error updating product details: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/add-product")
+def add_product(request: AddProductRequest):
+    """
+    Adds a new product to the catalog.
+    """
+    try:
+        # Standardize ID
+        product_id = request.id.strip().lower()
+        if not product_id:
+            raise HTTPException(status_code=400, detail="Product ID cannot be empty")
+        
+        # Check if product already exists
+        existing = get_item_by_id(product_id)
+        if existing:
+            raise HTTPException(status_code=400, detail=f"Product with ID '{product_id}' already exists")
+            
+        product_data = {
+            "id": product_id,
+            "name": request.name.strip(),
+            "price": request.price,
+            "cost_price": request.cost_price,
+            "stock": request.stock,
+            "unit": request.unit.strip(),
+            "category": request.category.strip(),
+            "sku": request.sku.strip(),
+            "color": request.color.strip(),
+            "icon": request.icon.strip(),
+            "coco_class": None
+        }
+        
+        success = add_product_to_db(product_data)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to add product to database")
+            
+        return {"success": True, "id": product_id}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Error adding product: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/bulk-update-products")
+def bulk_update_products(request: BulkUpdateProductsRequest):
+    """
+    Updates the price, cost price, and stock levels of multiple products in the catalog.
+    """
+    try:
+        updates_list = [upd.dict() for upd in request.updates]
+        success = bulk_update_products_details(updates_list)
+        if not success:
+            raise HTTPException(status_code=500, detail="Bulk update failed")
+        return {"success": True, "updated_count": len(updates_list)}
+    except Exception as e:
+        logger.error(f"Error during bulk product update: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/admin/finances")
 def get_finances():

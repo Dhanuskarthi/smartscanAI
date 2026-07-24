@@ -193,6 +193,63 @@ def test_login_auth_logic():
     assert users.get("unknown") is None
     print("[PASS] Login Authentication endpoint logic passed.")
 
+def test_add_product_and_bulk_updates():
+    print("\nTesting Add Product and Bulk Updates...")
+    from backend.database import init_db, add_product_to_db, bulk_update_products_details, get_item_by_id, DB_PATH
+    import os
+    
+    # Initialize fresh database
+    if not os.environ.get("VERCEL"):
+        if os.path.exists(DB_PATH):
+            try:
+                os.remove(DB_PATH)
+            except Exception:
+                pass
+        init_db()
+        
+    # 1. Test adding a product
+    prod_data = {
+        "id": "tomato",
+        "name": "Roma Tomato",
+        "price": 80.0,
+        "cost_price": 50.0,
+        "stock": 100.0,
+        "unit": "kg",
+        "category": "Produce",
+        "sku": "4011-TOM",
+        "color": "#FF3B30",
+        "icon": "🍅",
+        "coco_class": None
+    }
+    
+    success = add_product_to_db(prod_data)
+    assert success, "Failed to add product to database"
+    
+    fetched = get_item_by_id("tomato")
+    assert fetched is not None, "Tomato product should be in the database"
+    assert fetched["name"] == "Roma Tomato", f"Expected 'Roma Tomato', got {fetched['name']}"
+    assert fetched["price"] == 80.0, f"Expected 80.0 price, got {fetched['price']}"
+    assert fetched["stock"] == 100.0, f"Expected 100.0 stock, got {fetched['stock']}"
+    
+    # 2. Test bulk update
+    updates = [
+        {"id": "tomato", "price": 90.0, "cost_price": 60.0, "stock": 120.0},
+        {"id": "apple", "price": 190.0, "cost_price": 140.0, "stock": 80.0}
+    ]
+    
+    bulk_success = bulk_update_products_details(updates)
+    assert bulk_success, "Failed to bulk update products"
+    
+    updated_tomato = get_item_by_id("tomato")
+    assert updated_tomato["price"] == 90.0, f"Expected updated tomato price 90.0, got {updated_tomato['price']}"
+    assert updated_tomato["stock"] == 120.0, f"Expected updated tomato stock 120.0, got {updated_tomato['stock']}"
+    
+    updated_apple = get_item_by_id("apple")
+    assert updated_apple["price"] == 190.0, f"Expected updated apple price 190.0, got {updated_apple['price']}"
+    assert updated_apple["stock"] == 80.0, f"Expected updated apple stock 80.0, got {updated_apple['stock']}"
+    
+    print("[PASS] Add Product and Bulk Updates database verification passed.")
+
 def main():
     print("==================================================")
     print("   Running Automated Offline Backend Verification ")
@@ -218,6 +275,7 @@ def main():
         test_database_persistence()
         test_admin_catalog_updates()
         test_login_auth_logic()
+        test_add_product_and_bulk_updates()
         print("\n==================================================")
         print("  ALL OFFLINE TESTS PASSED SUCCESSFULLY! [OK]")
         print("==================================================")

@@ -456,6 +456,75 @@ def update_product_details(product_id, price, cost_price, stock):
         if not USE_SUPABASE:
             conn.close()
 
+def add_product_to_db(product_data):
+    if USE_SUPABASE:
+        try:
+            res = supabase.table("products").insert(product_data).execute()
+            return len(res.data) > 0
+        except Exception as e:
+            print(f"Supabase error adding product: {e}")
+            return False
+            
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """INSERT INTO products (id, name, price, cost_price, stock, unit, category, sku, color, icon, coco_class) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                product_data["id"],
+                product_data["name"],
+                product_data["price"],
+                product_data["cost_price"],
+                product_data["stock"],
+                product_data["unit"],
+                product_data["category"],
+                product_data["sku"],
+                product_data["color"],
+                product_data["icon"],
+                product_data.get("coco_class")
+            )
+        )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Database error adding product: {e}")
+        return False
+    finally:
+        if not USE_SUPABASE:
+            conn.close()
+
+def bulk_update_products_details(updates):
+    if USE_SUPABASE:
+        try:
+            for upd in updates:
+                supabase.table("products").update({
+                    "price": upd["price"],
+                    "cost_price": upd["cost_price"],
+                    "stock": upd["stock"]
+                }).eq("id", upd["id"]).execute()
+            return True
+        except Exception as e:
+            print(f"Supabase error in bulk update: {e}")
+            return False
+            
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        for upd in updates:
+            cursor.execute(
+                "UPDATE products SET price = ?, cost_price = ?, stock = ? WHERE id = ?",
+                (upd["price"], upd["cost_price"], upd["stock"], upd["id"])
+            )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Database error in bulk update: {e}")
+        return False
+    finally:
+        if not USE_SUPABASE:
+            conn.close()
+
 def save_transaction(tx_id, subtotal, tax, total, items):
     if USE_SUPABASE:
         try:
