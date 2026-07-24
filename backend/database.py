@@ -351,6 +351,47 @@ def get_item_by_id(item_id):
         if not USE_SUPABASE:
             conn.close()
 
+def get_item_by_sku_or_id(val):
+    val = val.strip().lower()
+    # 1. Try get_item_by_id
+    item = get_item_by_id(val)
+    if item:
+        return item
+        
+    # 2. Try match by SKU in database
+    if USE_SUPABASE:
+        try:
+            res = supabase.table("products").select("*").eq("sku", val).execute()
+            if res.data:
+                return res.data[0]
+            # Case insensitive/upper lookup fallback
+            res = supabase.table("products").select("*").eq("sku", val.upper()).execute()
+            if res.data:
+                return res.data[0]
+        except Exception as e:
+            print(f"Supabase error getting item by SKU: {e}")
+    else:
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM products WHERE LOWER(sku) = LOWER(?) OR id = ?", (val, val))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+        except Exception as e:
+            print(f"Error getting product by SKU: {e}")
+        finally:
+            if 'conn' in locals() and conn:
+                conn.close()
+                
+    # 3. Try fallback match in static GROCERY_ITEMS
+    for item in GROCERY_ITEMS.values():
+        if item["id"].lower() == val or item["sku"].lower() == val:
+            return item
+            
+    return None
+
 def get_item_by_coco_class(coco_class):
     if USE_SUPABASE:
         try:

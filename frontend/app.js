@@ -1466,12 +1466,80 @@ function handleLogout() {
     location.reload();
 }
 
+// Manual Product Entry & Barcode Scanner Input Handler
+function initManualEntry() {
+    const inputEl = document.getElementById('manual-search-input');
+    const btnEl = document.getElementById('btn-manual-add');
+    const statusEl = document.getElementById('manual-entry-status');
+
+    if (!inputEl || !btnEl) return;
+
+    const handleAdd = () => {
+        const query = inputEl.value.trim().toLowerCase();
+        if (!query) return;
+
+        // Reset status
+        statusEl.style.display = 'none';
+        statusEl.className = '';
+
+        // Search catalog cache
+        let matched = null;
+
+        if (databaseItems && databaseItems.length > 0) {
+            // 1. Try exact SKU/barcode match
+            matched = databaseItems.find(item => item.sku && item.sku.toLowerCase() === query);
+
+            // 2. Try exact ID match
+            if (!matched) {
+                matched = databaseItems.find(item => item.id && item.id.toLowerCase() === query);
+            }
+
+            // 3. Try partial name match
+            if (!matched) {
+                matched = databaseItems.find(item => item.name && item.name.toLowerCase().includes(query));
+            }
+        }
+
+        if (matched) {
+            // Found! Add to cart
+            addToCart(matched, 1);
+            inputEl.value = '';
+            
+            // Show brief success alert
+            statusEl.textContent = `✓ Added ${matched.name} to cart`;
+            statusEl.style.display = 'block';
+            statusEl.style.background = 'rgba(0, 230, 118, 0.1)';
+            statusEl.style.color = '#00E676';
+            statusEl.style.border = '1px solid rgba(0, 230, 118, 0.2)';
+            
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 2000);
+        } else {
+            // Not found
+            statusEl.textContent = `✗ No product matches "${query}"`;
+            statusEl.style.display = 'block';
+            statusEl.style.background = 'rgba(255, 59, 48, 0.1)';
+            statusEl.style.color = '#FF3B30';
+            statusEl.style.border = '1px solid rgba(255, 59, 48, 0.2)';
+        }
+    };
+
+    btnEl.addEventListener('click', handleAdd);
+    inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            handleAdd();
+        }
+    });
+}
+
 let appInitialized = false;
 async function initApp() {
     if (appInitialized) return;
     appInitialized = true;
     
     await fetchItems();
+    initManualEntry();
     initWebcam();
     initSimulation();
     initOCRMode();

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_details, get_financial_summary, add_product_to_db, bulk_update_products_details
+from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_details, get_financial_summary, add_product_to_db, bulk_update_products_details, get_item_by_sku_or_id
 from backend.detector import GroceryDetector
 from backend.parser import parse_receipt_image
 
@@ -232,7 +232,7 @@ def get_transactions():
 @app.post("/api/scan")
 def scan_frame(request: ScanRequest):
     """
-    Receives a camera frame as a base64 string, runs object detection,
+    Receives a camera frame as a base64 string, runs object detection and barcode scanning,
     and returns enriched detections with prices and metadata.
     """
     try:
@@ -248,19 +248,68 @@ def scan_frame(request: ScanRequest):
         if img is None:
             raise HTTPException(status_code=400, detail="Invalid image data")
 
-        # Run detection
+        # Run object detection
         if request.simulate:
             # Force simulation detection
             detections = detector._detect_fallback(img)
         else:
             detections = detector.detect(img)
 
+        # Detect 1D barcodes or QR codes in the image
+        barcode_val = None
+        points = None
+        try:
+            barcode_detector = cv2.barcode.BarcodeDetector()
+            retval, decoded_info, decoded_type, points_det = barcode_detector.detectAndDecode(img)
+            if retval:
+                if isinstance(decoded_info, (list, tuple)):
+                    for info in decoded_info:
+                        if info and info.strip():
+                            barcode_val = info.strip()
+                            points = points_det
+                            break
+                elif isinstance(decoded_info, str) and decoded_info.strip():
+                    barcode_val = decoded_info.strip()
+                    points = points_det
+        except Exception as e:
+            logger.warning(f"Barcode detector skipped or failed: {e}")
+
+        if not barcode_val:
+            try:
+                qr_detector = cv2.QRCodeDetector()
+                retval, decoded_info, points_det, straight_qrcode = qr_detector.detectAndDecode(img)
+                if retval and decoded_info.strip():
+                    barcode_val = decoded_info.strip()
+                    points = points_det
+            except Exception as e:
+                logger.warning(f"QR detector failed: {e}")
+
+        # If a barcode/QR is found, translate it to product details and inject as detection
+        if barcode_val:
+            logger.info(f"Decoded barcode/QR from frame: {barcode_val}")
+            item_info = get_item_by_sku_or_id(barcode_val)
+            if item_info:
+                box = [160, 120, 320, 240]  # center fallback box
+                if points is not None and len(points) > 0:
+                    try:
+                        pts = np.array(points, dtype=np.int32)
+                        x, y, w, h = cv2.boundingRect(pts)
+                        box = [int(x), int(y), int(w), int(h)]
+                    except Exception:
+                        pass
+                detections.append({
+                    "id": item_info["id"],
+                    "box": box,
+                    "confidence": 1.0,
+                    "is_simulated": False
+                })
+
         # Enrich detections with database catalog info
         enriched_detections = []
         for det in detections:
             item_id = det["id"]
-            # Look up items in database (using either ID or COCO class name)
-            item_info = get_item_by_id(item_id) or get_item_by_coco_class(item_id)
+            # Look up items in database (using either ID, SKU, or COCO class name)
+            item_info = get_item_by_sku_or_id(item_id) or get_item_by_coco_class(item_id)
             
             if item_info:
                 enriched_detections.append({
