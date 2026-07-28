@@ -1884,4 +1884,11 @@ body {
     border: 1px solid rgba(233, 30, 99, 0.25);
 }
 
+/* Catalog spreadsheet import dropzone styling */
+#catalog-dropzone:hover {
+    border-color: var(--secondary) !important;
+    background: rgba(41, 182, 246, 0.04) !important;
+}
+
+
 

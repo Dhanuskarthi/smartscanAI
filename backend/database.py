@@ -118,7 +118,7 @@ GROCERY_ITEMS = {
         "price": 60.00,
         "cost_price": 48.00,
         "stock": 100.0,
-        "unit": "item",
+        "unit": "1L packet",
         "category": "Dairy",
         "sku": "078742351866",
         "color": "#E5E5EA",
@@ -228,8 +228,9 @@ def init_db():
                 try:
                     supabase.table("products").update({"category": "Fruits"}).in_("id", ["apple", "banana", "orange"]).eq("category", "Produce").execute()
                     supabase.table("products").update({"category": "Vegetables"}).in_("id", ["broccoli", "carrot"]).eq("category", "Produce").execute()
+                    supabase.table("products").update({"unit": "1L packet"}).eq("id", "milk").execute()
                 except Exception as e:
-                    print(f"WARNING: database: Supabase category update migration failed: {e}")
+                    print(f"WARNING: database: Supabase category and unit updates failed: {e}")
         except Exception as e:
             print(f"WARNING: database: Supabase init table populating failed/skipped: {e}")
         return
@@ -303,6 +304,7 @@ def init_db():
     # 3b. Run migrations to update old Produce categories to specific Fruits and Vegetables
     cursor.execute("UPDATE products SET category = 'Fruits' WHERE id IN ('apple', 'banana', 'orange') AND category = 'Produce'")
     cursor.execute("UPDATE products SET category = 'Vegetables' WHERE id IN ('broccoli', 'carrot') AND category = 'Produce'")
+    cursor.execute("UPDATE products SET unit = '1L packet' WHERE id = 'milk'")
     conn.commit()
 
     # 4. Check if products table is empty; if so, populate it with default values
@@ -574,6 +576,55 @@ def add_product_to_db(product_data):
         return True
     except Exception as e:
         print(f"Database error adding product: {e}")
+        return False
+    finally:
+        if not USE_SUPABASE:
+            conn.close()
+
+def upsert_product_to_db(product_data):
+    if USE_SUPABASE:
+        try:
+            res = supabase.table("products").upsert(product_data).execute()
+            return len(res.data) > 0
+        except Exception as e:
+            print(f"Supabase error upserting product: {e}")
+            return False
+            
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """INSERT INTO products (id, name, price, cost_price, stock, unit, category, sku, color, icon, coco_class) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   name=excluded.name,
+                   price=excluded.price,
+                   cost_price=excluded.cost_price,
+                   stock=excluded.stock,
+                   unit=excluded.unit,
+                   category=excluded.category,
+                   sku=excluded.sku,
+                   color=excluded.color,
+                   icon=excluded.icon,
+                   coco_class=excluded.coco_class""",
+            (
+                product_data["id"],
+                product_data["name"],
+                product_data["price"],
+                product_data["cost_price"],
+                product_data["stock"],
+                product_data["unit"],
+                product_data["category"],
+                product_data["sku"],
+                product_data["color"],
+                product_data["icon"],
+                product_data.get("coco_class")
+            )
+        )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Database error upserting product: {e}")
         return False
     finally:
         if not USE_SUPABASE:

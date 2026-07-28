@@ -1,0 +1,4 @@
+id,name,price,cost_price,stock,unit,category,sku,color,icon
+milk,Whole Milk 1L,62.50,49.00,120.0,1L packet,Dairy,078742351866,#E5E5EA,🥛
+dragonfruit,Yellow Dragonfruit,250.00,180.00,45.0,kg,Fruits,078742351899,#FFCC00,🍍
+carrot,Organic Carrots,95.00,68.00,75.0,kg,Vegetables,078742351111,#FF9500,🥕

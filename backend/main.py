@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_details, get_financial_summary, add_product_to_db, bulk_update_products_details, get_item_by_sku_or_id
+from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_details, get_financial_summary, add_product_to_db, bulk_update_products_details, get_item_by_sku_or_id, upsert_product_to_db
 from backend.detector import GroceryDetector
 from backend.parser import parse_receipt_image
 
@@ -185,6 +185,119 @@ def bulk_update_products(request: BulkUpdateProductsRequest):
     except Exception as e:
         logger.error(f"Error during bulk product update: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+import io
+import csv
+
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
+
+@app.post("/api/admin/import-products")
+async def import_products(file: UploadFile = File(...)):
+    """
+    Imports catalog products from a CSV or Excel spreadsheet and upserts them to the database.
+    """
+    filename = file.filename.lower()
+    contents = await file.read()
+    
+    raw_rows = []
+    
+    if filename.endswith(".csv"):
+        try:
+            # Decode file contents to string stream
+            stream = io.StringIO(contents.decode("utf-8-sig"))
+            reader = csv.DictReader(stream)
+            for row in reader:
+                raw_rows.append(row)
+        except Exception as e:
+            logger.error(f"Error parsing CSV upload: {e}")
+            raise HTTPException(status_code=400, detail=f"Failed to parse CSV file: {str(e)}")
+            
+    elif filename.endswith((".xlsx", ".xls")):
+        if not HAS_PANDAS:
+            logger.error("Pandas/openpyxl dependency not available for Excel import.")
+            raise HTTPException(
+                status_code=400, 
+                detail="Excel parser dependencies (pandas/openpyxl) are not available on this server. Please upload a CSV file instead."
+            )
+        try:
+            df = pd.read_excel(io.BytesIO(contents))
+            df = df.fillna("")
+            raw_rows = df.to_dict(orient="records")
+        except Exception as e:
+            logger.error(f"Error parsing Excel upload: {e}")
+            raise HTTPException(status_code=400, detail=f"Failed to parse Excel spreadsheet: {str(e)}")
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported file format. Please upload a CSV or Excel (.xlsx/.xls) file.")
+        
+    if not raw_rows:
+        raise HTTPException(status_code=400, detail="The uploaded file contains no rows or product records.")
+        
+    upserted_count = 0
+    errors = []
+    
+    for idx, row in enumerate(raw_rows):
+        normalized = {}
+        for k, v in row.items():
+            k_clean = str(k).strip().lower().replace(" ", "_").replace("(", "").replace(")", "").replace("₹", "").strip("_")
+            normalized[k_clean] = str(v).strip()
+            
+        prod_id = normalized.get("id") or normalized.get("product_id") or normalized.get("slug")
+        name = normalized.get("name") or normalized.get("product_name") or normalized.get("title")
+        
+        if not prod_id or not name:
+            errors.append(f"Row {idx + 1}: Missing Product ID or Name")
+            continue
+            
+        price = normalized.get("price") or normalized.get("selling_price") or "0.0"
+        cost_price = normalized.get("cost_price") or normalized.get("cost") or "0.0"
+        stock = normalized.get("stock") or normalized.get("quantity") or normalized.get("initial_stock") or "0.0"
+        unit = normalized.get("unit") or "item"
+        category = normalized.get("category") or "General"
+        sku = normalized.get("sku") or normalized.get("sku_code") or normalized.get("barcode") or prod_id.upper()
+        color = normalized.get("color") or "#29B6F6"
+        icon = normalized.get("icon") or normalized.get("emoji") or "📦"
+        coco_class = normalized.get("coco_class") or None
+        
+        try:
+            price = float(price)
+            cost_price = float(cost_price)
+            stock = float(stock)
+        except ValueError:
+            price = 0.0
+            cost_price = 0.0
+            stock = 0.0
+            
+        product_data = {
+            "id": prod_id.lower().strip(),
+            "name": name.strip(),
+            "price": price,
+            "cost_price": cost_price,
+            "stock": stock,
+            "unit": unit.strip(),
+            "category": category.strip(),
+            "sku": sku.strip(),
+            "color": color.strip(),
+            "icon": icon.strip(),
+            "coco_class": coco_class.strip() if (coco_class and str(coco_class).strip()) else None
+        }
+        
+        success = upsert_product_to_db(product_data)
+        if success:
+            upserted_count += 1
+        else:
+            errors.append(f"Row {idx + 1} ({name}): Database save failure")
+            
+    return {
+        "success": True,
+        "imported_count": upserted_count,
+        "failed_count": len(errors),
+        "errors": errors[:10]
+    }
 
 
 @app.get("/api/admin/finances")

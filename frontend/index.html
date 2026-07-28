@@ -398,6 +398,30 @@
                         </div>
                     </div>
 
+                    <!-- Excel/CSV Catalog Import Section -->
+                    <div class="glass-card import-catalog-card" style="margin-bottom: 24px;">
+                        <div class="card-header">
+                            <h2>📥 Bulk Import Catalog via Excel or CSV</h2>
+                        </div>
+                        <div class="card-body" style="margin-top: 16px;">
+                            <div class="admin-tip-bar" style="margin-bottom: 16px;">
+                                <span class="tip-icon">📊</span>
+                                <span class="tip-text">Upload a `.csv` or `.xlsx` file to add new products or update existing inventory stock and prices.</span>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                                <div class="upload-dropzone" id="catalog-dropzone" style="width: 100%; border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s ease;">
+                                    <span style="font-size: 32px; display: block; margin-bottom: 8px;">📁</span>
+                                    <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 4px;">Upload Spreadsheet File</h3>
+                                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Drag & drop `.csv` or `.xlsx` here, or click to browse</p>
+                                    <input type="file" id="catalog-file-input" accept=".csv, .xlsx, .xls" style="display: none;">
+                                    <button class="btn btn-secondary btn-sm" id="btn-select-catalog-file" type="button">Select File</button>
+                                </div>
+                                <div id="catalog-import-status" style="display: none; width: 100%; padding: 10px; border-radius: var(--radius-sm); text-align: center; font-size: 13px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Daily Dairy, Vegetables & Fruits Updater Section -->
                     <div class="glass-card produce-updates-card" style="margin-bottom: 24px;">
                         <div class="card-header">
@@ -418,7 +442,7 @@
                                         <span>Product</span>
                                         <span>Daily Cost Price</span>
                                         <span>Daily Selling Price</span>
-                                        <span>Daily Stock</span>
+                                        <span>Daily Stock (1L packet)</span>
                                     </div>
                                     <div class="produce-update-list" id="dairy-update-list">
                                         <!-- Dynamic dairy items loaded here -->
@@ -434,7 +458,7 @@
                                         <span>Product</span>
                                         <span>Daily Cost Price</span>
                                         <span>Daily Selling Price</span>
-                                        <span>Daily Stock</span>
+                                        <span>Daily Stock (kg)</span>
                                     </div>
                                     <div class="produce-update-list" id="vegetables-update-list">
                                         <!-- Dynamic vegetables items loaded here -->
@@ -450,7 +474,7 @@
                                         <span>Product</span>
                                         <span>Daily Cost Price</span>
                                         <span>Daily Selling Price</span>
-                                        <span>Daily Stock</span>
+                                        <span>Daily Stock (kg)</span>
                                     </div>
                                     <div class="produce-update-list" id="fruits-update-list">
                                         <!-- Dynamic fruits items loaded here -->

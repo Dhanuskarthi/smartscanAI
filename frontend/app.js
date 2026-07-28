@@ -1588,6 +1588,107 @@ function initPaymentMethodSelector() {
     });
 }
 
+function initCatalogImport() {
+    const dropzone = document.getElementById('catalog-dropzone');
+    const input = document.getElementById('catalog-file-input');
+    const selectBtn = document.getElementById('btn-select-catalog-file');
+    const statusEl = document.getElementById('catalog-import-status');
+    
+    if (!dropzone || !input || !selectBtn) return;
+    
+    selectBtn.onclick = (e) => {
+        e.stopPropagation();
+        input.click();
+    };
+    
+    dropzone.onclick = () => {
+        input.click();
+    };
+    
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) handleCatalogUpload(file);
+    };
+    
+    dropzone.ondragover = (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'var(--secondary)';
+    };
+    dropzone.ondragleave = () => {
+        dropzone.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+    };
+    dropzone.ondrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file) handleCatalogUpload(file);
+    };
+    
+    async function handleCatalogUpload(file) {
+        statusEl.style.display = 'block';
+        statusEl.style.background = 'rgba(255, 255, 255, 0.05)';
+        statusEl.style.color = 'var(--text-main)';
+        statusEl.style.border = '1px solid var(--border-color)';
+        statusEl.innerHTML = '<div class="spinner" style="display: inline-block; width: 12px; height: 12px; border-width: 2px; margin-right: 8px; vertical-align: middle;"></div>Uploading and processing catalog spreadsheet...';
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await fetch('/api/admin/import-products', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                let errorMsg = 'Failed to import products';
+                try {
+                    const errData = await response.json();
+                    errorMsg = errData.detail || errorMsg;
+                } catch (e) {}
+                throw new Error(errorMsg);
+            }
+            
+            const data = await response.json();
+            
+            if (data.imported_count > 0) {
+                playBeep(880, 0.05);
+                setTimeout(() => playBeep(1200, 0.08), 60);
+                
+                statusEl.style.background = 'rgba(0, 230, 118, 0.15)';
+                statusEl.style.color = 'var(--primary)';
+                statusEl.style.border = '1px solid rgba(0, 230, 118, 0.25)';
+                
+                let successMsg = `✓ Successfully upserted ${data.imported_count} products.`;
+                if (data.failed_count > 0) {
+                    successMsg += ` (Failed: ${data.failed_count})`;
+                }
+                statusEl.textContent = successMsg;
+                
+                // Refresh local lists
+                await fetchItems();
+                fetchAdminCatalog();
+                
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                    statusEl.textContent = '';
+                }, 4000);
+            } else {
+                throw new Error("No products were imported. Check format or values.");
+            }
+        } catch (err) {
+            console.error("Spreadsheet import error:", err);
+            statusEl.style.background = 'rgba(255, 59, 48, 0.15)';
+            statusEl.style.color = 'var(--accent)';
+            statusEl.style.border = '1px solid rgba(255, 59, 48, 0.25)';
+            statusEl.textContent = `✗ Import error: ${err.message}`;
+            playBeep(220, 0.25);
+        } finally {
+            input.value = '';
+            dropzone.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        }
+    }
+}
+
 let appInitialized = false;
 async function initApp() {
     if (appInitialized) return;
@@ -1599,6 +1700,7 @@ async function initApp() {
     initSimulation();
     initOCRMode();
     initPaymentMethodSelector();
+    initCatalogImport();
     fetchTransactions();
 }
 
