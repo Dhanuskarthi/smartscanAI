@@ -88,7 +88,7 @@ def test_database_persistence():
     # Initialize
     init_db()
     
-    # Save a test transaction
+    # Save a test transaction with default payment method (cash)
     tx_items = [
         {"id": "apple", "name": "Honeycrisp Apple", "price": 180.00, "qty": 2, "unit": "kg"},
         {"id": "milk", "name": "Whole Milk 1L", "price": 60.00, "qty": 1, "unit": "item"}
@@ -108,11 +108,22 @@ def test_database_persistence():
     saved_tx = transactions[0]
     assert saved_tx["tx_id"] == tx_id, f"Expected tx_id {tx_id}, got {saved_tx['tx_id']}"
     assert saved_tx["total"] == total, f"Expected total {total}, got {saved_tx['total']}"
+    assert saved_tx["payment_method"] == "cash", f"Expected default payment method 'cash', got '{saved_tx['payment_method']}'"
     assert len(saved_tx["items"]) == 2, f"Expected 2 items in saved transaction, got {len(saved_tx['items'])}"
     
     # Verify items
     item_apple = next(item for item in saved_tx["items"] if item["item_id"] == "apple")
     assert item_apple["qty"] == 2, f"Expected apple qty 2, got {item_apple['qty']}"
+
+    # Save another transaction with explicit payment method (card)
+    tx_id_card = "TXID-CARD12345"
+    success_card = save_transaction(tx_id_card, subtotal, tax, total, tx_items, payment_method="card")
+    assert success_card, "Failed to save card transaction"
+
+    transactions_all = get_all_transactions()
+    assert len(transactions_all) == 2, f"Expected 2 transactions in DB, got {len(transactions_all)}"
+    saved_tx_card = next(tx for tx in transactions_all if tx["tx_id"] == tx_id_card)
+    assert saved_tx_card["payment_method"] == "card", f"Expected payment method 'card', got '{saved_tx_card['payment_method']}'"
     
     # Cleanup DB after test
     if os.path.exists(DB_PATH):
@@ -121,7 +132,7 @@ def test_database_persistence():
         except Exception:
             pass
             
-    print("[PASS] SQLite transaction persistence passed.")
+    print("[PASS] SQLite transaction persistence (including cash and card payment methods) passed.")
 
 def test_admin_catalog_updates():
     print("\nTesting Admin Catalog updates...")

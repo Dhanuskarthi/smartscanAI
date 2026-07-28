@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     subtotal DOUBLE PRECISION NOT NULL,
     tax DOUBLE PRECISION NOT NULL,
-    total DOUBLE PRECISION NOT NULL
+    total DOUBLE PRECISION NOT NULL,
+    payment_method TEXT NOT NULL DEFAULT 'cash'
 );
 
 -- 3. Transaction Items Table

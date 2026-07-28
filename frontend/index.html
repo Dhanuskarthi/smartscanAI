@@ -162,6 +162,28 @@
                                 <span>Grand Total</span>
                                 <span id="cart-total">$0.00</span>
                             </div>
+
+                            <!-- Payment Method Selector -->
+                            <div class="payment-method-container">
+                                <div class="payment-method-header">
+                                    <span>Payment Method</span>
+                                    <span id="selected-method-label">Cash</span>
+                                </div>
+                                <div class="payment-method-options">
+                                    <div class="payment-option active" data-method="cash" title="Cash">
+                                        <span class="payment-icon">💵</span>
+                                        <span class="payment-name">Cash</span>
+                                    </div>
+                                    <div class="payment-option" data-method="card" title="Card">
+                                        <span class="payment-icon">💳</span>
+                                        <span class="payment-name">Card</span>
+                                    </div>
+                                    <div class="payment-option" data-method="mobile" title="Mobile/UPI">
+                                        <span class="payment-icon">📱</span>
+                                        <span class="payment-name">Mobile</span>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <div class="cart-actions">
                                 <button class="btn btn-secondary" id="btn-clear-cart">Void All</button>

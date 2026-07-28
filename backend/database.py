@@ -262,7 +262,8 @@ def init_db():
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             subtotal REAL NOT NULL,
             tax REAL NOT NULL,
-            total REAL NOT NULL
+            total REAL NOT NULL,
+            payment_method TEXT NOT NULL DEFAULT 'cash'
         )
     """)
     
@@ -293,6 +294,11 @@ def init_db():
     item_columns = [col[1] for col in cursor.fetchall()]
     if "cost_price" not in item_columns:
         cursor.execute("ALTER TABLE transaction_items ADD COLUMN cost_price REAL NOT NULL DEFAULT 0.0")
+        
+    cursor.execute("PRAGMA table_info(transactions)")
+    tx_columns = [col[1] for col in cursor.fetchall()]
+    if "payment_method" not in tx_columns:
+        cursor.execute("ALTER TABLE transactions ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'cash'")
     
     # 3b. Run migrations to update old Produce categories to specific Fruits and Vegetables
     cursor.execute("UPDATE products SET category = 'Fruits' WHERE id IN ('apple', 'banana', 'orange') AND category = 'Produce'")
@@ -459,19 +465,45 @@ def get_all_items():
     if USE_SUPABASE:
         try:
             res = supabase.table("products").select("*").execute()
-            return res.data or []
+            products = res.data or []
+            
+            # Fetch and group sold quantities from transaction_items table
+            try:
+                ti_res = supabase.table("transaction_items").select("item_id, qty").execute()
+                ti_data = ti_res.data or []
+                sold_map = {}
+                for item in ti_data:
+                    item_id = item.get("item_id")
+                    qty = item.get("qty", 0)
+                    sold_map[item_id] = sold_map.get(item_id, 0) + qty
+                for p in products:
+                    p["sold_qty"] = sold_map.get(p["id"], 0)
+            except Exception as tie:
+                print(f"Supabase error getting transaction items for sold quantities: {tie}")
+                for p in products:
+                    p["sold_qty"] = 0
+            return products
         except Exception as e:
             print(f"Supabase error getting all items: {e}")
-            return list(GROCERY_ITEMS.values())
+            products = list(GROCERY_ITEMS.values())
+            for p in products:
+                p["sold_qty"] = 0
+            return products
             
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM products")
+        cursor.execute("""
+            SELECT p.*, COALESCE((SELECT SUM(ti.qty) FROM transaction_items ti WHERE ti.item_id = p.id), 0) AS sold_qty
+            FROM products p
+        """)
         rows = cursor.fetchall()
         if not rows:
-            return list(GROCERY_ITEMS.values())
+            products = list(GROCERY_ITEMS.values())
+            for p in products:
+                p["sold_qty"] = 0
+            return products
         return [dict(row) for row in rows]
     except Exception as e:
         print(f"Error getting all products: {e}")
@@ -578,7 +610,7 @@ def bulk_update_products_details(updates):
         if not USE_SUPABASE:
             conn.close()
 
-def save_transaction(tx_id, subtotal, tax, total, items):
+def save_transaction(tx_id, subtotal, tax, total, items, payment_method="cash"):
     if USE_SUPABASE:
         try:
             # 1. Insert transaction
@@ -586,7 +618,8 @@ def save_transaction(tx_id, subtotal, tax, total, items):
                 "tx_id": tx_id,
                 "subtotal": subtotal,
                 "tax": tax,
-                "total": total
+                "total": total,
+                "payment_method": payment_method
             }).execute()
             
             if not tx_res.data:
@@ -627,8 +660,8 @@ def save_transaction(tx_id, subtotal, tax, total, items):
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO transactions (tx_id, subtotal, tax, total) VALUES (?, ?, ?, ?)",
-            (tx_id, subtotal, tax, total)
+            "INSERT INTO transactions (tx_id, subtotal, tax, total, payment_method) VALUES (?, ?, ?, ?, ?)",
+            (tx_id, subtotal, tax, total, payment_method)
         )
         transaction_id = cursor.lastrowid
         

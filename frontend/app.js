@@ -7,6 +7,7 @@ let scannerInterval = null;
 let webcamStream = null;
 let currentDetectorEngine = "Heuristic Simulator";
 let scanCooldowns = {}; // item_id -> timestamp
+let selectedPaymentMethod = 'cash';
 
 // Canvas elements for simulation
 let simCanvas = document.getElementById('simulation-canvas');
@@ -760,6 +761,7 @@ document.getElementById('btn-checkout').onclick = async () => {
                 subtotal: parseFloat(subtotal.toFixed(2)),
                 tax: parseFloat(tax.toFixed(2)),
                 total: parseFloat(total.toFixed(2)),
+                payment_method: selectedPaymentMethod,
                 items: items.map(i => ({
                     id: i.id,
                     name: i.name,
@@ -809,7 +811,7 @@ document.getElementById('btn-checkout').onclick = async () => {
         <div class="r-line"><span>TAX 8%</span><span>${formatCurrency(tax)}</span></div>
         <div class="r-line" style="font-weight: bold;"><span>TOTAL</span><span>${formatCurrency(total)}</span></div>
         <div class="r-divider"></div>
-        <div class="r-line" style="justify-content: center;"><span>PAID VIA SMART WALLET</span></div>
+        <div class="r-line" style="justify-content: center; font-weight: bold;"><span>PAID VIA ${selectedPaymentMethod.toUpperCase()}</span></div>
         <div class="r-barcode">|||||||| |||| |||||</div>
         <div class="r-line" style="justify-content: center; font-size: 9px; margin-top: 4px;"><span>* THANK YOU FOR SCANNING *</span></div>
     `;
@@ -829,8 +831,9 @@ document.getElementById('btn-checkout').onclick = async () => {
         }
     }, 200);
 
-    // Refresh history panel quietly in background
+    // Refresh history panel and admin catalog/profit summary quietly in background
     fetchTransactions();
+    fetchAdminCatalog();
 };
 
 document.getElementById('btn-close-modal').onclick = () => {
@@ -838,6 +841,22 @@ document.getElementById('btn-close-modal').onclick = () => {
     // Clear and reset checkout
     cart = {};
     renderCart();
+    
+    // Reset payment method selection to cash
+    selectedPaymentMethod = 'cash';
+    document.querySelectorAll('.payment-option').forEach(opt => {
+        opt.classList.remove('active');
+    });
+    const defaultOpt = document.querySelector('.payment-option[data-method="cash"]');
+    if (defaultOpt) {
+        defaultOpt.classList.add('active');
+    }
+    const label = document.getElementById('selected-method-label');
+    if (label) {
+        label.textContent = 'Cash';
+        label.style.color = 'var(--primary)';
+    }
+
     document.getElementById('scanner-tip').textContent = "Ready to scan next customer.";
 };
 
@@ -886,9 +905,14 @@ function renderTransactions(transactions) {
             `<span class="history-product-tag">${item.qty} ${item.unit} ${item.name}</span>`
         ).join('');
         
+        const method = tx.payment_method || 'cash';
+        
         itemEl.innerHTML = `
             <div class="history-item-header">
-                <span class="history-item-id">${tx.tx_id}</span>
+                <span class="history-item-id">
+                    ${tx.tx_id}
+                    <span class="payment-method-badge ${method}">${method}</span>
+                </span>
                 <span class="history-item-time">${timeString}</span>
             </div>
             <div class="history-item-details">
@@ -1008,6 +1032,9 @@ function renderAdminCatalog(items) {
                         <span>SKU: ${item.sku} | Unit: ${item.unit} | Category: ${item.category}</span>
                         <div class="admin-product-meta">
                             <span class="stock-tag ${stockClass}">${stockText}</span>
+                            <span class="sold-tag" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                                Sold: ${item.sold_qty || 0} ${item.unit}s
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -1060,7 +1087,12 @@ function createProduceRow(item) {
             <div class="produce-icon-badge">${item.icon}</div>
             <div class="produce-text-details">
                 <span class="produce-name-label">${item.name}</span>
-                <span class="produce-category-sublabel">SKU: ${item.sku} | Unit: ${item.unit}</span>
+                <span class="produce-category-sublabel">
+                    SKU: ${item.sku} | Unit: ${item.unit}
+                    <span class="produce-sold-badge" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px;">
+                        Sold: ${item.sold_qty || 0}
+                    </span>
+                </span>
             </div>
         </div>
         <div class="produce-input-cell">
@@ -1533,6 +1565,29 @@ function initManualEntry() {
     });
 }
 
+function initPaymentMethodSelector() {
+    const options = document.querySelectorAll('.payment-option');
+    const label = document.getElementById('selected-method-label');
+    options.forEach(opt => {
+        opt.onclick = () => {
+            options.forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            selectedPaymentMethod = opt.getAttribute('data-method');
+            
+            // Set dynamic colors based on choice
+            if (selectedPaymentMethod === 'cash') {
+                label.style.color = 'var(--primary)';
+            } else if (selectedPaymentMethod === 'card') {
+                label.style.color = 'var(--secondary)';
+            } else {
+                label.style.color = 'var(--accent)';
+            }
+            label.textContent = selectedPaymentMethod;
+            playBeep(800, 0.05);
+        };
+    });
+}
+
 let appInitialized = false;
 async function initApp() {
     if (appInitialized) return;
@@ -1543,6 +1598,7 @@ async function initApp() {
     initWebcam();
     initSimulation();
     initOCRMode();
+    initPaymentMethodSelector();
     fetchTransactions();
 }
 

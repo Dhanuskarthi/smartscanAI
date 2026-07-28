@@ -53,6 +53,7 @@ class CheckoutRequest(BaseModel):
     tax: float
     total: float
     items: list[CheckoutItem]
+    payment_method: str = "cash"
 
 class UpdateProductRequest(BaseModel):
     id: str
@@ -208,7 +209,8 @@ def checkout_transaction(request: CheckoutRequest):
             subtotal=request.subtotal,
             tax=request.tax,
             total=request.total,
-            items=[item.dict() for item in request.items]
+            items=[item.dict() for item in request.items],
+            payment_method=request.payment_method
         )
         if not success:
             raise HTTPException(status_code=500, detail="Failed to save transaction to database")
