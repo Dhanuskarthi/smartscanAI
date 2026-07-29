@@ -474,6 +474,16 @@ function processScannedDetections(detections) {
 
 // CART MANAGEMENTS
 function addToCart(item, quantity = 1) {
+    const dbItem = databaseItems.find(dbItem => dbItem.id === item.id);
+    const availableStock = dbItem ? dbItem.stock : 0;
+    const currentCartQty = cart[item.id] ? cart[item.id].qty : 0;
+    
+    if (currentCartQty + quantity > availableStock) {
+        playBeep(220, 0.25);
+        alert(`Insufficient stock! Only ${availableStock} ${item.unit || 'units'} of ${item.name} available in inventory.`);
+        return;
+    }
+
     if (cart[item.id]) {
         cart[item.id].qty += quantity;
     } else {
@@ -494,6 +504,16 @@ function addToCart(item, quantity = 1) {
 
 function updateQty(item_id, delta) {
     if (cart[item_id]) {
+        if (delta > 0) {
+            const dbItem = databaseItems.find(dbItem => dbItem.id === item_id);
+            const availableStock = dbItem ? dbItem.stock : 0;
+            if (cart[item_id].qty + delta > availableStock) {
+                playBeep(220, 0.25);
+                alert(`Insufficient stock! Only ${availableStock} of ${cart[item_id].name} available.`);
+                return;
+            }
+        }
+        
         cart[item_id].qty += delta;
         if (cart[item_id].qty <= 0) {
             delete cart[item_id];
@@ -784,7 +804,7 @@ document.getElementById('btn-checkout').onclick = async () => {
                     id: i.id,
                     name: i.name,
                     price: parseFloat(i.price),
-                    qty: parseInt(i.qty),
+                    qty: parseFloat(i.qty),
                     unit: i.unit || 'item'
                 }))
             })

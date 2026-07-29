@@ -191,6 +191,14 @@ def test_admin_catalog_updates():
     assert summary["cost"] == 700.00, f"Expected cost 700.00, got {summary['cost']}"
     assert summary["profit"] == 300.00, f"Expected profit 300.00, got {summary['profit']}"
     
+    # 7. Delete transaction and verify stock is restored to 95.0
+    from backend.database import delete_transaction_by_id
+    delete_success = delete_transaction_by_id(tx_id)
+    assert delete_success, "Failed to delete stock test transaction"
+    
+    item_after_delete = get_item_by_id("apple")
+    assert item_after_delete["stock"] == 95.0, f"Expected stock 95.0 after deletion, got {item_after_delete['stock']}"
+    
     # Cleanup
     if os.path.exists(DB_PATH):
         try:
@@ -198,7 +206,8 @@ def test_admin_catalog_updates():
         except Exception:
             pass
             
-    print("[PASS] Admin Catalog update & stock/profit tracking passed.")
+    print("[PASS] Admin Catalog update & stock/profit tracking (including stock restoration) passed.")
+
 
 def test_login_auth_logic():
     print("\nTesting Login Authentication endpoint logic...")

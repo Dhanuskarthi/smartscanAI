@@ -53,8 +53,9 @@ class CheckoutItem(BaseModel):
     id: str
     name: str
     price: float
-    qty: int
+    qty: float
     unit: str
+
 
 class CheckoutRequest(BaseModel):
     tx_id: str

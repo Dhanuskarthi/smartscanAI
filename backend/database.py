@@ -867,10 +867,22 @@ def delete_transaction_by_id(tx_id):
                 return False
             db_id = res.data[0]["id"]
             
-            # 2. Delete transaction items first
+            # 2. Query items to restore stock levels in inventory
+            items_res = supabase.table("transaction_items").select("item_id, qty").eq("transaction_id", db_id).execute()
+            items = items_res.data or []
+            for item in items:
+                prod_id = item["item_id"]
+                qty = item["qty"]
+                
+                prod_res = supabase.table("products").select("stock").eq("id", prod_id).execute()
+                if prod_res.data:
+                    current_stock = prod_res.data[0].get("stock", 0.0)
+                    supabase.table("products").update({"stock": current_stock + qty}).eq("id", prod_id).execute()
+            
+            # 3. Delete transaction items first
             supabase.table("transaction_items").delete().eq("transaction_id", db_id).execute()
             
-            # 3. Delete transaction
+            # 4. Delete transaction
             supabase.table("transactions").delete().eq("tx_id", tx_id).execute()
             return True
         except Exception as e:
@@ -888,6 +900,12 @@ def delete_transaction_by_id(tx_id):
             return False
         db_id = row[0]
         
+        # Query items to restore stock levels in inventory
+        cursor.execute("SELECT item_id, qty FROM transaction_items WHERE transaction_id = ?", (db_id,))
+        items = cursor.fetchall()
+        for item_id, qty in items:
+            cursor.execute("UPDATE products SET stock = stock + ? WHERE id = ?", (qty, item_id))
+        
         # Delete transaction items
         cursor.execute("DELETE FROM transaction_items WHERE transaction_id = ?", (db_id,))
         
@@ -902,4 +920,5 @@ def delete_transaction_by_id(tx_id):
     finally:
         if not USE_SUPABASE:
             conn.close()
+
 
