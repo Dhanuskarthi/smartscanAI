@@ -76,7 +76,7 @@ def test_ocr_parser_logic():
 
 def test_database_persistence():
     print("\nTesting SQLite database persistence...")
-    from backend.database import init_db, save_transaction, get_all_transactions, DB_PATH
+    from backend.database import init_db, save_transaction, get_all_transactions, DB_PATH, delete_transaction_by_id
     
     # Clean test database path if exists to start fresh
     if os.path.exists(DB_PATH):
@@ -125,6 +125,14 @@ def test_database_persistence():
     saved_tx_card = next(tx for tx in transactions_all if tx["tx_id"] == tx_id_card)
     assert saved_tx_card["payment_method"] == "card", f"Expected payment method 'card', got '{saved_tx_card['payment_method']}'"
     
+    # Delete one transaction
+    success_delete = delete_transaction_by_id(tx_id_card)
+    assert success_delete, "Failed to delete card transaction"
+    
+    transactions_after_delete = get_all_transactions()
+    assert len(transactions_after_delete) == 1, f"Expected 1 transaction in DB after deletion, got {len(transactions_after_delete)}"
+    assert transactions_after_delete[0]["tx_id"] == tx_id, f"Expected remaining transaction to be {tx_id}"
+    
     # Cleanup DB after test
     if os.path.exists(DB_PATH):
         try:
@@ -132,7 +140,7 @@ def test_database_persistence():
         except Exception:
             pass
             
-    print("[PASS] SQLite transaction persistence (including cash and card payment methods) passed.")
+    print("[PASS] SQLite transaction persistence (including cash and card payment methods, and transaction deletion) passed.")
 
 def test_admin_catalog_updates():
     print("\nTesting Admin Catalog updates...")

@@ -857,3 +857,49 @@ def get_financial_summary():
     finally:
         if not USE_SUPABASE:
             conn.close()
+
+def delete_transaction_by_id(tx_id):
+    if USE_SUPABASE:
+        try:
+            # 1. Fetch transaction record to get primary key ID
+            res = supabase.table("transactions").select("id").eq("tx_id", tx_id).execute()
+            if not res.data:
+                return False
+            db_id = res.data[0]["id"]
+            
+            # 2. Delete transaction items first
+            supabase.table("transaction_items").delete().eq("transaction_id", db_id).execute()
+            
+            # 3. Delete transaction
+            supabase.table("transactions").delete().eq("tx_id", tx_id).execute()
+            return True
+        except Exception as e:
+            print(f"Supabase error deleting transaction: {e}")
+            return False
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Get SQLite primary key id
+        cursor.execute("SELECT id FROM transactions WHERE tx_id = ?", (tx_id,))
+        row = cursor.fetchone()
+        if not row:
+            return False
+        db_id = row[0]
+        
+        # Delete transaction items
+        cursor.execute("DELETE FROM transaction_items WHERE transaction_id = ?", (db_id,))
+        
+        # Delete transaction
+        cursor.execute("DELETE FROM transactions WHERE tx_id = ?", (tx_id,))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Database error deleting transaction: {e}")
+        return False
+    finally:
+        if not USE_SUPABASE:
+            conn.close()
+

@@ -925,13 +925,21 @@ function renderTransactions(transactions) {
         
         const method = tx.payment_method || 'cash';
         
+        const isAdmin = localStorage.getItem('user_role') === 'admin';
+        const deleteButtonHtml = isAdmin 
+            ? `<button class="btn btn-secondary btn-sm delete-tx-btn" style="padding: 2px 6px; font-size: 11px; margin-left: 8px; border-color: rgba(255, 59, 48, 0.4); color: var(--accent); background: transparent; cursor: pointer; border-radius: 4px;" onclick="deleteTransaction('${tx.tx_id}')">🗑️ Delete</button>`
+            : '';
+            
         itemEl.innerHTML = `
             <div class="history-item-header">
                 <span class="history-item-id">
                     ${tx.tx_id}
                     <span class="payment-method-badge ${method}">${method}</span>
                 </span>
-                <span class="history-item-time">${timeString}</span>
+                <span class="history-item-time" style="display: flex; align-items: center;">
+                    ${timeString}
+                    ${deleteButtonHtml}
+                </span>
             </div>
             <div class="history-item-details">
                 <span class="history-item-summary">${tx.items.length} items purchased</span>
@@ -949,6 +957,84 @@ document.getElementById('btn-refresh-history').onclick = () => {
     playBeep(440, 0.05);
     fetchTransactions();
 };
+
+async function deleteTransaction(txId) {
+    if (!confirm(`Are you sure you want to delete transaction ${txId}?`)) {
+        return;
+    }
+    
+    playBeep(220, 0.1);
+    try {
+        const response = await fetch(`/api/transactions/${txId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            throw new Error("Failed to delete transaction");
+        }
+        
+        const data = await response.json();
+        console.log("Transaction deleted:", data);
+        
+        // Refresh transactions, financials, and stocks
+        fetchTransactions();
+        fetchFinancialSummary();
+        updateAdminStockQuietly();
+    } catch (err) {
+        console.error("Delete transaction failed:", err);
+        alert("Failed to delete transaction. Please try again.");
+    }
+}
+window.deleteTransaction = deleteTransaction;
+
+async function updateAdminStockQuietly() {
+    try {
+        const response = await fetch(`/api/items?_=${Date.now()}`);
+        const items = await response.json();
+        databaseItems = items;
+        
+        items.forEach(item => {
+            // Update stock input field in admin list
+            const adminRow = document.querySelector(`.admin-price-update-form[data-id="${item.id}"]`);
+            if (adminRow) {
+                const stockInput = adminRow.querySelector('.admin-stock-input-field');
+                if (stockInput && document.activeElement !== stockInput) {
+                    stockInput.value = item.stock;
+                }
+                
+                // Also update stock tag
+                const stockTag = adminRow.parentElement.querySelector('.stock-tag');
+                if (stockTag) {
+                    const isLow = item.stock < 15.0;
+                    stockTag.textContent = isLow ? `Low Stock (${item.stock} ${item.unit})` : `In Stock (${item.stock} ${item.unit})`;
+                    stockTag.className = `stock-tag ${isLow ? 'low-stock' : 'in-stock'}`;
+                }
+                
+                // Also update sold tag
+                const soldTag = adminRow.parentElement.querySelector('.sold-tag');
+                if (soldTag) {
+                    soldTag.textContent = `Sold: ${item.sold_qty || 0} ${item.unit}s`;
+                }
+            }
+            
+            // Update produce list stock inputs
+            const produceRow = document.querySelector(`.produce-update-row[data-id="${item.id}"]`);
+            if (produceRow) {
+                const stockInput = produceRow.querySelector('.produce-stock-field');
+                if (stockInput && document.activeElement !== stockInput) {
+                    stockInput.value = item.stock;
+                }
+                
+                const soldBadge = produceRow.querySelector('.produce-sold-badge');
+                if (soldBadge) {
+                    soldBadge.textContent = `Sold: ${item.sold_qty || 0}`;
+                }
+            }
+        });
+    } catch (e) {
+        console.warn("Quiet stock updates failed:", e);
+    }
+}
 
 // Admin Panel catalog management
 async function fetchAdminCatalog() {
@@ -1726,6 +1812,7 @@ async function initApp() {
         if (localStorage.getItem('user_role')) {
             fetchTransactions();
             fetchFinancialSummary();
+            updateAdminStockQuietly();
         }
     }, 4000);
 }

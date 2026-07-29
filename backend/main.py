@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_details, get_financial_summary, add_product_to_db, bulk_update_products_details, get_item_by_sku_or_id, upsert_product_to_db
+from backend.database import get_item_by_id, get_item_by_coco_class, get_all_items, init_db, save_transaction, get_all_transactions, update_product_details, get_financial_summary, add_product_to_db, bulk_update_products_details, get_item_by_sku_or_id, upsert_product_to_db, delete_transaction_by_id
 from backend.detector import GroceryDetector
 from backend.parser import parse_receipt_image
 
@@ -351,6 +351,20 @@ def get_transactions():
         return transactions
     except Exception as e:
         logger.error(f"Error fetching transactions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/transactions/{tx_id}")
+def delete_transaction_endpoint(tx_id: str):
+    """
+    Deletes a transaction and its items from the database catalog.
+    """
+    try:
+        success = delete_transaction_by_id(tx_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Transaction not found or could not be deleted")
+        return {"success": True, "tx_id": tx_id}
+    except Exception as e:
+        logger.error(f"Error deleting transaction {tx_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/scan")
