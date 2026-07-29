@@ -8,6 +8,7 @@ let webcamStream = null;
 let currentDetectorEngine = "Heuristic Simulator";
 let scanCooldowns = {}; // item_id -> timestamp
 let selectedPaymentMethod = 'cash';
+let scanInProgress = false;
 
 // Canvas elements for simulation
 let simCanvas = document.getElementById('simulation-canvas');
@@ -48,7 +49,7 @@ function formatCurrency(amount) {
 // Fetch database items on load
 async function fetchItems() {
     try {
-        const response = await fetch('/api/items');
+        const response = await fetch(`/api/items?_=${Date.now()}`);
         databaseItems = await response.json();
         console.log("Loaded product database:", databaseItems);
     } catch (error) {
@@ -149,24 +150,32 @@ function startScannerLoop() {
     
     scannerInterval = setInterval(async () => {
         if (selectedMode !== 'camera' || video.paused || video.ended) return;
+        if (scanInProgress) return;
         
-        captureCanvas.width = video.videoWidth;
-        captureCanvas.height = video.videoHeight;
-        const capCtx = captureCanvas.getContext('2d');
-        capCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-        
-        const base64Img = captureCanvas.toDataURL('image/jpeg', 0.6);
-        const result = await sendScanFrame(base64Img, false);
-        
-        // Draw detections
-        ctx.clearRect(0, 0, overlay.width, overlay.height);
-        if (result && result.detections) {
-            drawDetections(ctx, result.detections, overlay.width, overlay.height);
-            processScannedDetections(result.detections);
-        }
-        
-        if (result && result.engine) {
-            updateDetectorEngineBadge(result.engine);
+        scanInProgress = true;
+        try {
+            captureCanvas.width = video.videoWidth;
+            captureCanvas.height = video.videoHeight;
+            const capCtx = captureCanvas.getContext('2d');
+            capCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            
+            const base64Img = captureCanvas.toDataURL('image/jpeg', 0.6);
+            const result = await sendScanFrame(base64Img, false);
+            
+            // Draw detections
+            ctx.clearRect(0, 0, overlay.width, overlay.height);
+            if (result && result.detections) {
+                drawDetections(ctx, result.detections, overlay.width, overlay.height);
+                processScannedDetections(result.detections);
+            }
+            
+            if (result && result.engine) {
+                updateDetectorEngineBadge(result.engine);
+            }
+        } catch (e) {
+            console.error("Camera scanner error:", e);
+        } finally {
+            scanInProgress = false;
         }
     }, 400); // Scan every 400ms to balance performance
 }
@@ -239,21 +248,29 @@ function startSimulationLoop() {
     
     scannerInterval = setInterval(async () => {
         if (selectedMode !== 'simulation') return;
+        if (scanInProgress) return;
         
-        // Send simulated scene frame to API
-        const base64Img = simCanvas.toDataURL('image/jpeg', 0.6);
-        const result = await sendScanFrame(base64Img, true); // Force simulation mode logic
-        
-        drawSimulationScene();
-        
-        // Render bounding boxes over simulated item
-        if (result && result.detections && result.detections.length > 0) {
-            drawDetections(simCtx, result.detections, simCanvas.width, simCanvas.height);
-            processScannedDetections(result.detections);
-        }
-        
-        if (result && result.engine) {
-            updateDetectorEngineBadge(result.engine);
+        scanInProgress = true;
+        try {
+            // Send simulated scene frame to API
+            const base64Img = simCanvas.toDataURL('image/jpeg', 0.6);
+            const result = await sendScanFrame(base64Img, true); // Force simulation mode logic
+            
+            drawSimulationScene();
+            
+            // Render bounding boxes over simulated item
+            if (result && result.detections && result.detections.length > 0) {
+                drawDetections(simCtx, result.detections, simCanvas.width, simCanvas.height);
+                processScannedDetections(result.detections);
+            }
+            
+            if (result && result.engine) {
+                updateDetectorEngineBadge(result.engine);
+            }
+        } catch (e) {
+            console.error("Simulation scanner error:", e);
+        } finally {
+            scanInProgress = false;
         }
     }, 500);
 }
@@ -397,6 +414,7 @@ function stopScanner() {
         clearInterval(scannerInterval);
         scannerInterval = null;
     }
+    scanInProgress = false;
 }
 
 // Bounding boxes drawer
@@ -866,7 +884,7 @@ async function fetchTransactions() {
     const emptyMsgEl = document.getElementById('empty-history-msg');
     
     try {
-        const response = await fetch('/api/transactions');
+        const response = await fetch(`/api/transactions?_=${Date.now()}`);
         const transactions = await response.json();
         renderTransactions(transactions);
     } catch (error) {
@@ -941,7 +959,7 @@ async function fetchAdminCatalog() {
     fetchFinancialSummary();
     
     try {
-        const response = await fetch('/api/items');
+        const response = await fetch(`/api/items?_=${Date.now()}`);
         const items = await response.json();
         // Keep our global databaseItems cached updated as well!
         databaseItems = items;
@@ -954,7 +972,7 @@ async function fetchAdminCatalog() {
 
 async function fetchFinancialSummary() {
     try {
-        const response = await fetch('/api/admin/finances');
+        const response = await fetch(`/api/admin/finances?_=${Date.now()}`);
         const summary = await response.json();
         
         document.getElementById('db-revenue').textContent = formatCurrency(summary.revenue);
@@ -1702,6 +1720,14 @@ async function initApp() {
     initPaymentMethodSelector();
     initCatalogImport();
     fetchTransactions();
+    
+    // Start background polling for real-time updates (every 4 seconds)
+    setInterval(() => {
+        if (localStorage.getItem('user_role')) {
+            fetchTransactions();
+            fetchFinancialSummary();
+        }
+    }, 4000);
 }
 
 // Attach event listeners
